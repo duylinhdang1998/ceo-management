@@ -8,6 +8,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { EmailModule } from './modules/email/email.module';
+import { HealthModule } from './modules/health/health.module';
 import { ResponseInterceptor } from './common/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -43,6 +44,7 @@ const isTest = process.env.NODE_ENV === 'test';
     AssignmentsModule,
     NotesModule,
     EmailModule,
+    HealthModule,
   ],
   providers: [
     // Global throttler guard — enforces ThrottlerModule limits on all routes.
