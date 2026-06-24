@@ -1,8 +1,8 @@
-import { Global, Module } from '@nestjs/common';
-import { Pool } from 'pg';
-import { getPool } from './pool';
+import { Global, Module } from "@nestjs/common";
+import { Pool } from "pg";
+import { getPool } from "./pool";
 
-export const DB_POOL = 'DB_POOL';
+export const DB_POOL = "DB_POOL";
 
 @Global()
 @Module({

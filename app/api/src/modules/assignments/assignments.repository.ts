@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DB_POOL } from '../../common/db/db.module';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DB_POOL } from "../../common/db/db.module";
 
 export interface AssigneeRow {
   id: string;
@@ -45,7 +45,7 @@ export class AssignmentsRepository {
 
     await this.pool.query(
       `INSERT INTO report_assignments (report_id, user_id, assigned_by)
-       VALUES ${valuePlaceholders.join(', ')}
+       VALUES ${valuePlaceholders.join(", ")}
        ON CONFLICT (report_id, user_id) DO NOTHING`,
       params,
     );
@@ -57,7 +57,7 @@ export class AssignmentsRepository {
   async unassign(reportId: string, userIds: string[]): Promise<void> {
     if (userIds.length === 0) return;
 
-    const placeholders = userIds.map((_, i) => `$${i + 2}`).join(', ');
+    const placeholders = userIds.map((_, i) => `$${i + 2}`).join(", ");
     await this.pool.query(
       `DELETE FROM report_assignments
        WHERE report_id = $1 AND user_id IN (${placeholders})`,
@@ -122,7 +122,7 @@ export class AssignmentsRepository {
    */
   async countExistingUsers(userIds: string[]): Promise<number> {
     if (userIds.length === 0) return 0;
-    const placeholders = userIds.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = userIds.map((_, i) => `$${i + 1}`).join(", ");
     const res = await this.pool.query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM users WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
       userIds,
@@ -168,7 +168,7 @@ export class AssignmentsRepository {
 
     await this.pool.query(
       `INSERT INTO report_assignments (report_id, user_id, assigned_by)
-       VALUES ${valuePlaceholders.join(', ')}
+       VALUES ${valuePlaceholders.join(", ")}
        ON CONFLICT (report_id, user_id) DO NOTHING`,
       params,
     );

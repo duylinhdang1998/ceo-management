@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DB_POOL } from '../../common/db/db.module';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DB_POOL } from "../../common/db/db.module";
 
 export interface EmailLogRow {
   id: string;
@@ -11,7 +11,7 @@ export interface EmailLogRow {
   body: string | null;
   report_id: string | null;
   attachments_count: number;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   error: string | null;
   created_at: Date;
 }
@@ -24,7 +24,7 @@ export interface CreateEmailLogData {
   body: string;
   reportId?: string | null;
   attachmentsCount: number;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   error?: string | null;
 }
 

@@ -4,11 +4,11 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Inject,
-} from '@nestjs/common';
-import { Pool } from 'pg';
-import { Request } from 'express';
-import * as crypto from 'crypto';
-import { DB_POOL } from '../db/db.module';
+} from "@nestjs/common";
+import { Pool } from "pg";
+import { Request } from "express";
+import * as crypto from "crypto";
+import { DB_POOL } from "../db/db.module";
 
 /**
  * PatGuard — validates a Personal Access Token passed as Bearer token.
@@ -30,8 +30,8 @@ export class PatGuard implements CanActivate {
 
     if (!rawToken) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Missing or invalid authorization token',
+        code: "UNAUTHORIZED",
+        message: "Missing or invalid authorization token",
       });
     }
 
@@ -53,8 +53,8 @@ export class PatGuard implements CanActivate {
 
     if (result.rows.length === 0) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Invalid or revoked personal access token',
+        code: "UNAUTHORIZED",
+        message: "Invalid or revoked personal access token",
       });
     }
 
@@ -62,8 +62,8 @@ export class PatGuard implements CanActivate {
 
     if (row.revoked_at !== null) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Invalid or revoked personal access token',
+        code: "UNAUTHORIZED",
+        message: "Invalid or revoked personal access token",
       });
     }
 
@@ -76,7 +76,7 @@ export class PatGuard implements CanActivate {
     // Attach user context same shape as JwtPayload
     request.user = {
       sub: row.user_id,
-      role: row.role as 'super_admin' | 'employee',
+      role: row.role as "super_admin" | "employee",
       mustChangePassword: false,
     };
 
@@ -84,11 +84,11 @@ export class PatGuard implements CanActivate {
   }
 
   private extractBearerToken(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 
   hashToken(raw: string): string {
-    return crypto.createHash('sha256').update(raw).digest('hex');
+    return crypto.createHash("sha256").update(raw).digest("hex");
   }
 }

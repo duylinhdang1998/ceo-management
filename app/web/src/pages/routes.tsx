@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- routing module exports route config alongside small inline guard components by design */
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { useAuthStore, selectIsAuthenticated, selectMustChangePassword, selectRole } from '@/shared/stores/authStore';
 import type { Role } from '@/shared/types';

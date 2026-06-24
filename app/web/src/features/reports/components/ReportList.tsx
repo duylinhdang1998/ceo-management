@@ -48,7 +48,7 @@ export function ReportList({ isAdmin, onEditReport, onCreateReport, onShowToast 
   const deleteReport = useDeleteReport();
   const bulkDeleteReports = useBulkDeleteReports();
 
-  const reports = data?.data ?? [];
+  const reports = useMemo(() => data?.data ?? [], [data]);
   const meta = data?.meta;
   const totalPages = meta?.totalPages ?? 1;
   const total = meta?.total ?? 0;

@@ -8,21 +8,24 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { PatService } from './pat.service';
-import { CreatePatDto } from './dto/create-pat.dto';
-import { JwtGuard } from '../../common/auth/jwt.guard';
-import { RolesGuard } from '../../common/auth/roles.guard';
-import { Roles } from '../../common/auth/roles.decorator';
-import { CurrentUser, JwtPayload } from '../../common/auth/current-user.decorator';
+} from "@nestjs/common";
+import { PatService } from "./pat.service";
+import { CreatePatDto } from "./dto/create-pat.dto";
+import { JwtGuard } from "../../common/auth/jwt.guard";
+import { RolesGuard } from "../../common/auth/roles.guard";
+import { Roles } from "../../common/auth/roles.decorator";
+import {
+  CurrentUser,
+  JwtPayload,
+} from "../../common/auth/current-user.decorator";
 
 /**
  * PAT endpoints — all restricted to super_admin.
  * Routes: GET/POST/DELETE /api/auth/tokens
  */
-@Controller('api/auth/tokens')
+@Controller("api/auth/tokens")
 @UseGuards(JwtGuard, RolesGuard)
-@Roles('super_admin')
+@Roles("super_admin")
 export class PatController {
   constructor(private readonly patService: PatService) {}
 
@@ -37,9 +40,9 @@ export class PatController {
     return this.patService.list(user.sub);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(HttpStatus.OK)
-  revoke(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  revoke(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.patService.revoke(user.sub, id);
   }
 }

@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import { Transporter } from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import * as nodemailer from "nodemailer";
+import { Transporter } from "nodemailer";
 
 /**
  * Attachment to include in an outgoing email.
@@ -45,16 +45,15 @@ export class EmailService {
   private readonly from: string;
 
   constructor() {
-    this.from =
-      process.env.SMTP_FROM ?? '"CEO Portal" <noreply@example.com>';
+    this.from = process.env.SMTP_FROM ?? '"CEO Portal" <noreply@example.com>';
 
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT ?? '465', 10),
+      host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT ?? "465", 10),
       secure: true, // port 465 uses SSL; set false for STARTTLS on 587
       auth: {
-        user: process.env.SMTP_USER ?? '',
-        pass: process.env.SMTP_PASS ?? '',
+        user: process.env.SMTP_USER ?? "",
+        pass: process.env.SMTP_PASS ?? "",
       },
     });
   }
@@ -67,13 +66,9 @@ export class EmailService {
    * email_logs with status='failed'.
    */
   async sendMail(opts: SendMailOptions): Promise<string> {
-    const recipients = Array.isArray(opts.to)
-      ? opts.to.join(', ')
-      : opts.to;
+    const recipients = Array.isArray(opts.to) ? opts.to.join(", ") : opts.to;
 
-    this.logger.log(
-      `Sending email to=${recipients} subject="${opts.subject}"`,
-    );
+    this.logger.log(`Sending email to=${recipients} subject="${opts.subject}"`);
 
     const attachments = (opts.attachments ?? []).map((a) => ({
       filename: a.filename,
@@ -90,7 +85,9 @@ export class EmailService {
       attachments,
     });
 
-    this.logger.log(`Email delivered to=${recipients} messageId=${info?.messageId ?? 'unknown'}`);
-    return (info?.messageId as string | undefined) ?? 'sent';
+    this.logger.log(
+      `Email delivered to=${recipients} messageId=${info?.messageId ?? "unknown"}`,
+    );
+    return (info?.messageId as string | undefined) ?? "sent";
   }
 }

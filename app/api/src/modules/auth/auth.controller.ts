@@ -5,15 +5,18 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtGuard } from '../../common/auth/jwt.guard';
-import { CurrentUser, JwtPayload } from '../../common/auth/current-user.decorator';
+} from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
+import { AuthService } from "./auth.service";
+import { LoginDto } from "./dto/login.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { JwtGuard } from "../../common/auth/jwt.guard";
+import {
+  CurrentUser,
+  JwtPayload,
+} from "../../common/auth/current-user.decorator";
 
-@Controller('api/auth')
+@Controller("api/auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -22,7 +25,7 @@ export class AuthController {
    * Public — returns JWT + mustChangePassword flag.
    */
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @Post('login')
+  @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -32,7 +35,7 @@ export class AuthController {
    * POST /api/auth/change-password
    * Requires valid JWT (any role, including employees on first login).
    */
-  @Post('change-password')
+  @Post("change-password")
   @UseGuards(JwtGuard)
   @HttpCode(HttpStatus.OK)
   async changePassword(

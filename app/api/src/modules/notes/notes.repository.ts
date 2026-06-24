@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DB_POOL } from '../../common/db/db.module';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DB_POOL } from "../../common/db/db.module";
 
 export interface NoteRow {
   id: string;
@@ -54,14 +54,14 @@ function toPublic(row: NoteRow): NotePublic {
     note.author = {
       id: row.author_id,
       name: row.author_name,
-      email: row.author_email ?? '',
+      email: row.author_email ?? "",
     };
   }
   if (row.thread_owner_name !== undefined) {
     note.threadOwner = {
       id: row.thread_owner_id,
       name: row.thread_owner_name,
-      email: row.thread_owner_email ?? '',
+      email: row.thread_owner_email ?? "",
     };
   }
   return note;

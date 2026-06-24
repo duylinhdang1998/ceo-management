@@ -10,19 +10,19 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { JwtGuard } from '../../common/auth/jwt.guard';
-import { RolesGuard } from '../../common/auth/roles.guard';
-import { Roles } from '../../common/auth/roles.decorator';
-import { paginated } from '../../common/response.interceptor';
+} from "@nestjs/common";
+import { UsersService } from "./users.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { JwtGuard } from "../../common/auth/jwt.guard";
+import { RolesGuard } from "../../common/auth/roles.guard";
+import { Roles } from "../../common/auth/roles.decorator";
+import { paginated } from "../../common/response.interceptor";
 
-@Controller('api/users')
+@Controller("api/users")
 @UseGuards(JwtGuard, RolesGuard)
-@Roles('super_admin')
+@Roles("super_admin")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -47,26 +47,26 @@ export class UsersController {
     });
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
+  @Get(":id")
+  async findOne(@Param("id") id: string) {
     return this.usersService.findById(id);
   }
 
-  @Put(':id')
+  @Put(":id")
   @HttpCode(HttpStatus.OK)
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  async update(@Param("id") id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
-  @Post(':id/reset-password')
+  @Post(":id/reset-password")
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Param('id') id: string) {
+  async resetPassword(@Param("id") id: string) {
     return this.usersService.resetPassword(id);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(HttpStatus.OK)
-  async softDelete(@Param('id') id: string) {
+  async softDelete(@Param("id") id: string) {
     return this.usersService.softDelete(id);
   }
 }

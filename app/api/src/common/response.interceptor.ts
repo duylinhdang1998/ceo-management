@@ -3,9 +3,9 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 export interface ApiResponse<T> {
   success: true;
@@ -21,9 +21,10 @@ export interface ApiResponse<T> {
  * or just raw data (which becomes { success: true, data: rawData }).
  */
 @Injectable()
-export class ResponseInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>>
-{
+export class ResponseInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
   intercept(
     _context: ExecutionContext,
     next: CallHandler,
@@ -33,10 +34,14 @@ export class ResponseInterceptor<T>
         // Allow controllers to return { data, meta } for pagination
         if (
           value !== null &&
-          typeof value === 'object' &&
-          '__wrapped__' in value
+          typeof value === "object" &&
+          "__wrapped__" in value
         ) {
-          const { data, meta } = value as { data: T; meta?: Record<string, unknown>; __wrapped__: true };
+          const { data, meta } = value as {
+            data: T;
+            meta?: Record<string, unknown>;
+            __wrapped__: true;
+          };
           return { success: true as const, data, ...(meta ? { meta } : {}) };
         }
         return { success: true as const, data: value };

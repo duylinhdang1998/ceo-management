@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { EmailService } from './email.service';
-import { AiService } from './ai.service';
-import { EmailController } from './email.controller';
-import { EmailRepository } from './email.repository';
-import { UsersModule } from '../users/users.module';
-import { AuthModule } from '../auth/auth.module';
+import { Module } from "@nestjs/common";
+import { EmailService } from "./email.service";
+import { AiService } from "./ai.service";
+import { EmailController } from "./email.controller";
+import { EmailRepository } from "./email.repository";
+import { UsersModule } from "../users/users.module";
+import { AuthModule } from "../auth/auth.module";
 
 /**
  * EmailModule — AI compose + Gmail SMTP send + email_logs.

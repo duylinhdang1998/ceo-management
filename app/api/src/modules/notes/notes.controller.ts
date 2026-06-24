@@ -9,14 +9,17 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { NotesService } from './notes.service';
-import { CreateNoteDto } from './dto/create-note.dto';
-import { UpdateNoteDto } from './dto/update-note.dto';
-import { JwtGuard } from '../../common/auth/jwt.guard';
-import { CurrentUser, JwtPayload } from '../../common/auth/current-user.decorator';
+} from "@nestjs/common";
+import { NotesService } from "./notes.service";
+import { CreateNoteDto } from "./dto/create-note.dto";
+import { UpdateNoteDto } from "./dto/update-note.dto";
+import { JwtGuard } from "../../common/auth/jwt.guard";
+import {
+  CurrentUser,
+  JwtPayload,
+} from "../../common/auth/current-user.decorator";
 
-@Controller('api/reports/:reportId/notes')
+@Controller("api/reports/:reportId/notes")
 @UseGuards(JwtGuard)
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
@@ -28,7 +31,7 @@ export class NotesController {
    */
   @Get()
   async getNotes(
-    @Param('reportId') reportId: string,
+    @Param("reportId") reportId: string,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.notesService.getNotes(reportId, user);
@@ -42,7 +45,7 @@ export class NotesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createNote(
-    @Param('reportId') reportId: string,
+    @Param("reportId") reportId: string,
     @Body() dto: CreateNoteDto,
     @CurrentUser() user: JwtPayload,
   ) {
@@ -53,9 +56,9 @@ export class NotesController {
    * PUT /api/reports/:reportId/notes/:noteId
    * Only the author of the note can edit it.
    */
-  @Put(':noteId')
+  @Put(":noteId")
   async updateNote(
-    @Param('noteId') noteId: string,
+    @Param("noteId") noteId: string,
     @Body() dto: UpdateNoteDto,
     @CurrentUser() user: JwtPayload,
   ) {
@@ -66,9 +69,9 @@ export class NotesController {
    * DELETE /api/reports/:reportId/notes/:noteId
    * Author can delete own; super_admin can delete any.
    */
-  @Delete(':noteId')
+  @Delete(":noteId")
   async deleteNote(
-    @Param('noteId') noteId: string,
+    @Param("noteId") noteId: string,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.notesService.deleteNote(noteId, user);

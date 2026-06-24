@@ -1,12 +1,12 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DB_POOL } from '../../common/db/db.module';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DB_POOL } from "../../common/db/db.module";
 
 export interface ReportRow {
   id: string;
   title: string;
   description: string | null;
-  status: 'draft' | 'published';
+  status: "draft" | "published";
   s3_key: string | null;
   size_bytes: number | null;
   created_by: string | null;
@@ -22,7 +22,7 @@ export interface CreateReportData {
   id: string;
   title: string;
   description?: string;
-  status: 'draft' | 'published';
+  status: "draft" | "published";
   /** Real S3 key — never 'pending'. Caller uploads to S3 before calling this. */
   s3Key: string;
   sizeBytes: number;
@@ -32,7 +32,7 @@ export interface CreateReportData {
 export interface UpdateReportData {
   title?: string;
   description?: string;
-  status?: 'draft' | 'published';
+  status?: "draft" | "published";
   s3Key?: string;
   sizeBytes?: number;
 }
@@ -110,7 +110,7 @@ export class ReportsRepository {
 
   async update(id: string, data: UpdateReportData): Promise<ReportRow | null> {
     // Build SET clause dynamically — only update provided fields
-    const setClauses: string[] = ['updated_at = now()'];
+    const setClauses: string[] = ["updated_at = now()"];
     const values: unknown[] = [];
     let paramIdx = 1;
 
@@ -137,7 +137,7 @@ export class ReportsRepository {
 
     values.push(id);
     const result = await this.pool.query<ReportRow>(
-      `UPDATE reports SET ${setClauses.join(', ')}
+      `UPDATE reports SET ${setClauses.join(", ")}
        WHERE id = $${paramIdx} AND deleted_at IS NULL
        RETURNING *`,
       values,
@@ -175,10 +175,19 @@ export class ReportsRepository {
   async list(
     opts: ListReportsOptions,
   ): Promise<{ rows: ReportRow[]; total: number }> {
-    const { search, page, limit, reportIds, publishedOnly, createdFrom, createdTo, assignedTo } = opts;
+    const {
+      search,
+      page,
+      limit,
+      reportIds,
+      publishedOnly,
+      createdFrom,
+      createdTo,
+      assignedTo,
+    } = opts;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ['r.deleted_at IS NULL'];
+    const conditions: string[] = ["r.deleted_at IS NULL"];
     const params: unknown[] = [];
     let idx = 1;
 
@@ -208,19 +217,22 @@ export class ReportsRepository {
 
     if (createdTo) {
       // Treat createdTo as end-of-day inclusive: add 1 day and use <
-      conditions.push(`r.created_at < ($${idx++}::timestamptz + INTERVAL '1 day')`);
+      conditions.push(
+        `r.created_at < ($${idx++}::timestamptz + INTERVAL '1 day')`,
+      );
       params.push(createdTo);
     }
 
     // assignedTo: filter to reports assigned to a specific employee (super_admin popup use case).
     // We JOIN report_assignments for filtering; the COUNT join below is a separate LEFT JOIN alias.
-    let assignedToJoin = '';
+    let assignedToJoin = "";
     if (assignedTo) {
       assignedToJoin = `JOIN report_assignments ra_filter ON ra_filter.report_id = r.id AND ra_filter.user_id = $${idx++}`;
       params.push(assignedTo);
     }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // COUNT query — uses the same conditions; assignedTo JOIN already restricts the set
     const countResult = await this.pool.query<{ count: string }>(

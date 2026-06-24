@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUUID } from "class-validator";
 
 /**
  * DTO for POST /api/email/compose
@@ -10,14 +10,14 @@ import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
  */
 export class ComposeEmailDto {
   @IsString()
-  @IsNotEmpty({ message: 'Prompt không được để trống' })
+  @IsNotEmpty({ message: "Prompt không được để trống" })
   prompt: string;
 
   @IsOptional()
-  @IsUUID('all', { message: 'reportId phải là UUID hợp lệ' })
+  @IsUUID("all", { message: "reportId phải là UUID hợp lệ" })
   reportId?: string;
 
   @IsOptional()
-  @IsUUID('all', { message: 'selectedRecipientId phải là UUID hợp lệ' })
+  @IsUUID("all", { message: "selectedRecipientId phải là UUID hợp lệ" })
   selectedRecipientId?: string;
 }

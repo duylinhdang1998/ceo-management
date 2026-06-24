@@ -1,8 +1,8 @@
-import { SetMetadata } from '@nestjs/common';
+import { SetMetadata } from "@nestjs/common";
 
-export type UserRole = 'super_admin' | 'employee';
+export type UserRole = "super_admin" | "employee";
 
-export const ROLES_KEY = 'roles';
+export const ROLES_KEY = "roles";
 
 /**
  * @Roles('super_admin') — attach required roles to a route/controller.

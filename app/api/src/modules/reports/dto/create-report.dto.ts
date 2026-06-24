@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from "class-validator";
 
 /**
  * CreateReportDto — status is intentionally omitted.
@@ -6,7 +6,7 @@ import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
  */
 export class CreateReportDto {
   @IsString()
-  @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
+  @IsNotEmpty({ message: "Tiêu đề không được để trống" })
   @MaxLength(500)
   title: string;
 

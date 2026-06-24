@@ -13,25 +13,25 @@ import {
   HttpCode,
   HttpStatus,
   Res,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
-import { memoryStorage } from 'multer';
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { Response } from "express";
+import { memoryStorage } from "multer";
 
-import { JwtGuard } from '../../common/auth/jwt.guard';
-import { RolesGuard } from '../../common/auth/roles.guard';
-import { JwtOrPatWriteGuard } from '../../common/auth/jwt-or-pat-write.guard';
-import { Roles } from '../../common/auth/roles.decorator';
+import { JwtGuard } from "../../common/auth/jwt.guard";
+import { RolesGuard } from "../../common/auth/roles.guard";
+import { JwtOrPatWriteGuard } from "../../common/auth/jwt-or-pat-write.guard";
+import { Roles } from "../../common/auth/roles.decorator";
 import {
   CurrentUser,
   JwtPayload,
-} from '../../common/auth/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { paginated } from '../../common/response.interceptor';
-import { ReportsService } from './reports.service';
-import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportDto } from './dto/update-report.dto';
-import { BulkDeleteReportsDto } from './dto/bulk-delete.dto';
+} from "../../common/auth/current-user.decorator";
+import { PaginationDto } from "../../common/dto/pagination.dto";
+import { paginated } from "../../common/response.interceptor";
+import { ReportsService } from "./reports.service";
+import { CreateReportDto } from "./dto/create-report.dto";
+import { UpdateReportDto } from "./dto/update-report.dto";
+import { BulkDeleteReportsDto } from "./dto/bulk-delete.dto";
 
 /**
  * ReportsController — implements all endpoints per architecture §8 and SRS FR2/FR7.
@@ -58,7 +58,7 @@ const multerMemoryOptions = {
 // Controller
 // ---------------------------------------------------------------------------
 
-@Controller('api/reports')
+@Controller("api/reports")
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
@@ -67,7 +67,7 @@ export class ReportsController {
   // --------------------------------------------------------------------------
   @Post()
   @UseGuards(JwtOrPatWriteGuard)
-  @UseInterceptors(FileInterceptor('file', multerMemoryOptions))
+  @UseInterceptors(FileInterceptor("file", multerMemoryOptions))
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateReportDto,
@@ -80,11 +80,11 @@ export class ReportsController {
   // --------------------------------------------------------------------------
   // PUT /api/reports/:id — update (super_admin JWT or PAT)
   // --------------------------------------------------------------------------
-  @Put(':id')
+  @Put(":id")
   @UseGuards(JwtOrPatWriteGuard)
-  @UseInterceptors(FileInterceptor('file', multerMemoryOptions))
+  @UseInterceptors(FileInterceptor("file", multerMemoryOptions))
   async update(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() dto: UpdateReportDto,
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
@@ -96,9 +96,9 @@ export class ReportsController {
   // NOTE: declared BEFORE :id routes so NestJS does not match "bulk-delete" as
   // a param value.
   // --------------------------------------------------------------------------
-  @Post('bulk-delete')
+  @Post("bulk-delete")
   @UseGuards(JwtGuard, RolesGuard)
-  @Roles('super_admin')
+  @Roles("super_admin")
   @HttpCode(HttpStatus.OK)
   async bulkRemove(@Body() dto: BulkDeleteReportsDto) {
     return this.reportsService.bulkRemove(dto.ids);
@@ -107,10 +107,10 @@ export class ReportsController {
   // --------------------------------------------------------------------------
   // DELETE /api/reports/:id — soft delete (super_admin JWT only)
   // --------------------------------------------------------------------------
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(JwtGuard, RolesGuard)
-  @Roles('super_admin')
-  async remove(@Param('id') id: string) {
+  @Roles("super_admin")
+  async remove(@Param("id") id: string) {
     await this.reportsService.remove(id);
     return { deleted: true };
   }
@@ -141,22 +141,19 @@ export class ReportsController {
   // GET /api/reports/:id — detail (JWT, role-scoped in service)
   // NOTE: must be declared BEFORE :id/content so NestJS routing matches correctly
   // --------------------------------------------------------------------------
-  @Get(':id')
+  @Get(":id")
   @UseGuards(JwtGuard)
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
     return this.reportsService.findOne(id, user.role, user.sub);
   }
 
   // --------------------------------------------------------------------------
   // GET /api/reports/:id/content — HTML proxy (JWT, authz in service)
   // --------------------------------------------------------------------------
-  @Get(':id/content')
+  @Get(":id/content")
   @UseGuards(JwtGuard)
   async getContent(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @CurrentUser() user: JwtPayload,
     @Res() res: Response,
   ) {
@@ -172,10 +169,18 @@ export class ReportsController {
     // - Do NOT set X-Frame-Options (that would block the iframe itself)
     res
       .status(200)
-      .set('Content-Type', contentType.startsWith('text/html') ? 'text/html; charset=utf-8' : contentType)
-      .set('X-Content-Type-Options', 'nosniff')
-      .set('Cache-Control', 'no-store')
-      .set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:;")
+      .set(
+        "Content-Type",
+        contentType.startsWith("text/html")
+          ? "text/html; charset=utf-8"
+          : contentType,
+      )
+      .set("X-Content-Type-Options", "nosniff")
+      .set("Cache-Control", "no-store")
+      .set(
+        "Content-Security-Policy",
+        "default-src 'none'; style-src 'unsafe-inline'; img-src data:;",
+      )
       .send(html);
   }
 }

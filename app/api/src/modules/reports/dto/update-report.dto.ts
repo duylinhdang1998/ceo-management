@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, MaxLength } from "class-validator";
 
 export class UpdateReportDto {
   @IsOptional()
@@ -12,8 +12,8 @@ export class UpdateReportDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['draft', 'published'])
-  status?: 'draft' | 'published';
+  @IsIn(["draft", "published"])
+  status?: "draft" | "published";
 
   /**
    * htmlContent — used in JSON body flow (FR7.2).

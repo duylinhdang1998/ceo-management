@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { S3Service } from './s3.service';
+import { Module } from "@nestjs/common";
+import { S3Service } from "./s3.service";
 
 /**
  * S3Module — exports S3Service for use in any feature module.

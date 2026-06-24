@@ -2,14 +2,14 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
-import { UsersRepository, UserPublic } from './users.repository';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+} from "@nestjs/common";
+import * as bcrypt from "bcryptjs";
+import { UsersRepository, UserPublic } from "./users.repository";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 
 const BCRYPT_ROUNDS = 12;
-const DEFAULT_EMPLOYEE_PASSWORD = 'Nhanvien@123';
+const DEFAULT_EMPLOYEE_PASSWORD = "Nhanvien@123";
 
 @Injectable()
 export class UsersService {
@@ -18,7 +18,10 @@ export class UsersService {
   async create(dto: CreateUserDto): Promise<UserPublic> {
     const existing = await this.repo.findByEmailExcludeId(dto.email);
     if (existing) {
-      throw new ConflictException({ code: 'CONFLICT', message: 'Email đã tồn tại' });
+      throw new ConflictException({
+        code: "CONFLICT",
+        message: "Email đã tồn tại",
+      });
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -42,7 +45,10 @@ export class UsersService {
   async findById(id: string): Promise<UserPublic> {
     const user = await this.repo.findById(id);
     if (!user) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy nhân viên",
+      });
     }
     return user;
   }
@@ -51,14 +57,20 @@ export class UsersService {
     // Check existence first
     const existing = await this.repo.findById(id);
     if (!existing) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy nhân viên",
+      });
     }
 
     // Email uniqueness check (exclude current user)
     if (dto.email) {
       const conflict = await this.repo.findByEmailExcludeId(dto.email, id);
       if (conflict) {
-        throw new ConflictException({ code: 'CONFLICT', message: 'Email đã tồn tại' });
+        throw new ConflictException({
+          code: "CONFLICT",
+          message: "Email đã tồn tại",
+        });
       }
     }
 
@@ -71,29 +83,46 @@ export class UsersService {
 
     // update() returns null only if deleted concurrently — treat as 404
     if (!updated) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy nhân viên",
+      });
     }
 
     return updated;
   }
 
-  async resetPassword(id: string): Promise<{ message: string; tempPassword: string }> {
+  async resetPassword(
+    id: string,
+  ): Promise<{ message: string; tempPassword: string }> {
     const existing = await this.repo.findById(id);
     if (!existing) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy nhân viên",
+      });
     }
 
-    const passwordHash = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(
+      DEFAULT_EMPLOYEE_PASSWORD,
+      BCRYPT_ROUNDS,
+    );
     await this.repo.resetPassword(id, passwordHash);
 
-    return { message: 'Đã đặt lại mật khẩu về mặc định', tempPassword: DEFAULT_EMPLOYEE_PASSWORD };
+    return {
+      message: "Đã đặt lại mật khẩu về mặc định",
+      tempPassword: DEFAULT_EMPLOYEE_PASSWORD,
+    };
   }
 
   async softDelete(id: string): Promise<{ message: string }> {
     const result = await this.repo.softDelete(id);
     if (!result.deleted) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy nhân viên",
+      });
     }
-    return { message: 'Đã xóa nhân viên' };
+    return { message: "Đã xóa nhân viên" };
   }
 }

@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Controller, Get } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 
 /**
  * Public liveness endpoint used by the Docker healthcheck.
@@ -7,10 +7,10 @@ import { SkipThrottle } from '@nestjs/throttler';
  * (the web service depends_on api: service_healthy).
  */
 @SkipThrottle()
-@Controller('api/health')
+@Controller("api/health")
 export class HealthController {
   @Get()
   check() {
-    return { status: 'ok', uptime: process.uptime() };
+    return { status: "ok", uptime: process.uptime() };
   }
 }

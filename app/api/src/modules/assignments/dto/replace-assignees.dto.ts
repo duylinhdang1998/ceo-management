@@ -1,4 +1,4 @@
-import { IsArray, IsUUID } from 'class-validator';
+import { IsArray, IsUUID } from "class-validator";
 
 /**
  * ReplaceAssigneesDto — body for PUT /api/reports/:id/assignments.
@@ -6,6 +6,6 @@ import { IsArray, IsUUID } from 'class-validator';
  */
 export class ReplaceAssigneesDto {
   @IsArray()
-  @IsUUID('4', { each: true, message: 'Mỗi userId phải là UUID hợp lệ' })
+  @IsUUID("4", { each: true, message: "Mỗi userId phải là UUID hợp lệ" })
   userIds: string[];
 }

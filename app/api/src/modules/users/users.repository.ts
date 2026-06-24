@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DB_POOL } from '../../common/db/db.module';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DB_POOL } from "../../common/db/db.module";
 
 export interface UserRow {
   id: string;
@@ -82,7 +82,7 @@ export class UsersRepository {
     const baseWhere = `
       WHERE role = 'employee'
         AND deleted_at IS NULL
-        ${search ? `AND (name ILIKE $1 OR email ILIKE $1)` : ''}
+        ${search ? `AND (name ILIKE $1 OR email ILIKE $1)` : ""}
     `;
     const params: (string | number)[] = search ? [`%${search}%`] : [];
 
@@ -95,8 +95,8 @@ export class UsersRepository {
     const paginatedParams = search
       ? [`%${search}%`, limit, offset]
       : [limit, offset];
-    const limitPlaceholder = search ? '$2' : '$1';
-    const offsetPlaceholder = search ? '$3' : '$2';
+    const limitPlaceholder = search ? "$2" : "$1";
+    const offsetPlaceholder = search ? "$3" : "$2";
 
     const rows = await this.pool.query<UserRow>(
       `SELECT id, name, email, phone, role, is_active, must_change_password, created_at, updated_at
@@ -159,7 +159,7 @@ export class UsersRepository {
 
     const res = await this.pool.query<UserRow>(
       `UPDATE users
-       SET ${setClauses.join(', ')}
+       SET ${setClauses.join(", ")}
        WHERE id = $${idx} AND deleted_at IS NULL
        RETURNING id, name, email, phone, role, is_active, must_change_password, created_at, updated_at`,
       params,

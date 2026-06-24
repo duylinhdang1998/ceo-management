@@ -5,13 +5,13 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Inject,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Pool } from 'pg';
-import * as crypto from 'crypto';
-import { Request } from 'express';
-import { DB_POOL } from '../db/db.module';
-import { JwtPayload } from './current-user.decorator';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Pool } from "pg";
+import * as crypto from "crypto";
+import { Request } from "express";
+import { DB_POOL } from "../db/db.module";
+import { JwtPayload } from "./current-user.decorator";
 
 /**
  * JwtOrPatWriteGuard — grants access to write endpoints (POST, PUT) if:
@@ -41,13 +41,13 @@ export class JwtOrPatWriteGuard implements CanActivate {
 
     if (!raw) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Missing or invalid authorization token',
+        code: "UNAUTHORIZED",
+        message: "Missing or invalid authorization token",
       });
     }
 
     // --- Try PAT first ---
-    const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
+    const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
     const patResult = await this.pool.query<{
       user_id: string;
       role: string;
@@ -66,14 +66,14 @@ export class JwtOrPatWriteGuard implements CanActivate {
       const row = patResult.rows[0];
       if (row.revoked_at !== null) {
         throw new UnauthorizedException({
-          code: 'UNAUTHORIZED',
-          message: 'Invalid or revoked personal access token',
+          code: "UNAUTHORIZED",
+          message: "Invalid or revoked personal access token",
         });
       }
-      if (row.role !== 'super_admin') {
+      if (row.role !== "super_admin") {
         throw new ForbiddenException({
-          code: 'FORBIDDEN',
-          message: 'Access denied — insufficient role',
+          code: "FORBIDDEN",
+          message: "Access denied — insufficient role",
         });
       }
       // Update last_used_at asynchronously — fire-and-forget
@@ -81,7 +81,11 @@ export class JwtOrPatWriteGuard implements CanActivate {
         `UPDATE personal_access_tokens SET last_used_at = now() WHERE token_hash = $1`,
         [tokenHash],
       );
-      req.user = { sub: row.user_id, role: 'super_admin', mustChangePassword: false };
+      req.user = {
+        sub: row.user_id,
+        role: "super_admin",
+        mustChangePassword: false,
+      };
       return true;
     }
 
@@ -90,10 +94,10 @@ export class JwtOrPatWriteGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(raw, {
         secret: process.env.JWT_SECRET,
       });
-      if (payload.role !== 'super_admin') {
+      if (payload.role !== "super_admin") {
         throw new ForbiddenException({
-          code: 'FORBIDDEN',
-          message: 'Access denied — insufficient role',
+          code: "FORBIDDEN",
+          message: "Access denied — insufficient role",
         });
       }
       req.user = payload;
@@ -101,14 +105,14 @@ export class JwtOrPatWriteGuard implements CanActivate {
     } catch (err) {
       if (err instanceof ForbiddenException) throw err;
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Missing or invalid authorization token',
+        code: "UNAUTHORIZED",
+        message: "Missing or invalid authorization token",
       });
     }
   }
 
   private extractBearer(req: Request): string | undefined {
-    const [type, token] = req.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = req.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 /**
  * Singleton pg Pool instance.
@@ -11,7 +11,7 @@ export function getPool(): Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set');
+      throw new Error("DATABASE_URL environment variable is not set");
     }
     pool = new Pool({
       connectionString,
@@ -20,8 +20,8 @@ export function getPool(): Pool {
       connectionTimeoutMillis: 5_000,
     });
 
-    pool.on('error', (err) => {
-      console.error('[pg Pool] Unexpected error on idle client', err);
+    pool.on("error", (err) => {
+      console.error("[pg Pool] Unexpected error on idle client", err);
     });
   }
   return pool;

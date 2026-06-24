@@ -1,10 +1,10 @@
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { AssignmentsRepository, AssigneePublic } from './assignments.repository';
-import { AssignUsersDto } from './dto/assign-users.dto';
-import { ReplaceAssigneesDto } from './dto/replace-assignees.dto';
+  AssignmentsRepository,
+  AssigneePublic,
+} from "./assignments.repository";
+import { AssignUsersDto } from "./dto/assign-users.dto";
+import { ReplaceAssigneesDto } from "./dto/replace-assignees.dto";
 
 @Injectable()
 export class AssignmentsService {
@@ -18,18 +18,24 @@ export class AssignmentsService {
     // Verify report exists
     const reportExists = await this.repo.reportExists(reportId);
     if (!reportExists) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Báo cáo không tồn tại",
+      });
     }
 
     // Verify all userIds exist
     const existingCount = await this.repo.countExistingUsers(dto.userIds);
     if (existingCount !== dto.userIds.length) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Một hoặc nhiều nhân viên không tồn tại' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Một hoặc nhiều nhân viên không tồn tại",
+      });
     }
 
     await this.repo.assign(reportId, dto.userIds, assignedBy);
 
-    return { message: 'Gán báo cáo thành công', count: dto.userIds.length };
+    return { message: "Gán báo cáo thành công", count: dto.userIds.length };
   }
 
   async unassign(
@@ -39,19 +45,25 @@ export class AssignmentsService {
     // Verify report exists
     const reportExists = await this.repo.reportExists(reportId);
     if (!reportExists) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Báo cáo không tồn tại",
+      });
     }
 
     // Idempotent — unassign even if not assigned; no error
     await this.repo.unassign(reportId, dto.userIds);
 
-    return { message: 'Bỏ gán thành công' };
+    return { message: "Bỏ gán thành công" };
   }
 
   async listAssignees(reportId: string): Promise<AssigneePublic[]> {
     const reportExists = await this.repo.reportExists(reportId);
     if (!reportExists) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Báo cáo không tồn tại",
+      });
     }
     return this.repo.listAssignees(reportId);
   }
@@ -68,20 +80,29 @@ export class AssignmentsService {
   ): Promise<{ message: string; count: number }> {
     const reportExists = await this.repo.reportExists(reportId);
     if (!reportExists) {
-      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Báo cáo không tồn tại",
+      });
     }
 
     // Verify all provided userIds exist (skip when clearing)
     if (dto.userIds.length > 0) {
       const existingCount = await this.repo.countExistingUsers(dto.userIds);
       if (existingCount !== dto.userIds.length) {
-        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Một hoặc nhiều nhân viên không tồn tại' });
+        throw new NotFoundException({
+          code: "NOT_FOUND",
+          message: "Một hoặc nhiều nhân viên không tồn tại",
+        });
       }
     }
 
     await this.repo.replaceAssignees(reportId, dto.userIds, replacedBy);
 
-    return { message: 'Cập nhật danh sách gán thành công', count: dto.userIds.length };
+    return {
+      message: "Cập nhật danh sách gán thành công",
+      count: dto.userIds.length,
+    };
   }
 
   // ─── Methods exposed for BE#2 (ReportsModule) ─────────────────────────────

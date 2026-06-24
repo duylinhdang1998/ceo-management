@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUUID } from "class-validator";
 
 /**
  * DTO for POST /api/email/send (multipart/form-data)
@@ -8,19 +8,19 @@ import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
  * coerces them appropriately.
  */
 export class SendEmailDto {
-  @IsUUID('all', { message: 'recipientUserId phải là UUID hợp lệ' })
-  @IsNotEmpty({ message: 'recipientUserId không được để trống' })
+  @IsUUID("all", { message: "recipientUserId phải là UUID hợp lệ" })
+  @IsNotEmpty({ message: "recipientUserId không được để trống" })
   recipientUserId: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'subject không được để trống' })
+  @IsNotEmpty({ message: "subject không được để trống" })
   subject: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'body không được để trống' })
+  @IsNotEmpty({ message: "body không được để trống" })
   body: string;
 
   @IsOptional()
-  @IsUUID('all', { message: 'reportId phải là UUID hợp lệ' })
+  @IsUUID("all", { message: "reportId phải là UUID hợp lệ" })
   reportId?: string;
 }

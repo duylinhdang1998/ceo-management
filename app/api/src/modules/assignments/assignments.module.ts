@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { AssignmentsController } from './assignments.controller';
-import { AssignmentsService } from './assignments.service';
-import { AssignmentsRepository } from './assignments.repository';
-import { AuthModule } from '../auth/auth.module';
+import { Module } from "@nestjs/common";
+import { AssignmentsController } from "./assignments.controller";
+import { AssignmentsService } from "./assignments.service";
+import { AssignmentsRepository } from "./assignments.repository";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [AuthModule],

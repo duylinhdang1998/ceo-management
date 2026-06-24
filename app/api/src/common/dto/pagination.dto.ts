@@ -1,5 +1,13 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsISO8601, IsUUID } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsISO8601,
+  IsUUID,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 export class PaginationDto {
   @IsOptional()

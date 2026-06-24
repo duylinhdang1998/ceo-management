@@ -2,10 +2,10 @@ import {
   Injectable,
   ExecutionContext,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import { JwtPayload } from './current-user.decorator';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { JwtPayload } from "./current-user.decorator";
 
 @Injectable()
 export class JwtGuard {
@@ -17,8 +17,8 @@ export class JwtGuard {
 
     if (!token) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Missing or invalid authorization token',
+        code: "UNAUTHORIZED",
+        message: "Missing or invalid authorization token",
       });
     }
 
@@ -31,14 +31,14 @@ export class JwtGuard {
       return true;
     } catch {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Missing or invalid authorization token',
+        code: "UNAUTHORIZED",
+        message: "Missing or invalid authorization token",
       });
     }
   }
 
   private extractBearerToken(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

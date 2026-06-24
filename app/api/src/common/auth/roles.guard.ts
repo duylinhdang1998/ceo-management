@@ -3,10 +3,10 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ROLES_KEY, UserRole } from './roles.decorator';
-import { JwtPayload } from './current-user.decorator';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { ROLES_KEY, UserRole } from "./roles.decorator";
+import { JwtPayload } from "./current-user.decorator";
 
 /**
  * RolesGuard — must be used AFTER JwtGuard (request.user must already be set).
@@ -34,8 +34,8 @@ export class RolesGuard implements CanActivate {
     if (!user) {
       // Should not happen if JwtGuard ran first, but guard defensively
       throw new ForbiddenException({
-        code: 'FORBIDDEN',
-        message: 'Access denied',
+        code: "FORBIDDEN",
+        message: "Access denied",
       });
     }
 
@@ -43,8 +43,8 @@ export class RolesGuard implements CanActivate {
 
     if (!hasRole) {
       throw new ForbiddenException({
-        code: 'FORBIDDEN',
-        message: 'Access denied — insufficient role',
+        code: "FORBIDDEN",
+        message: "Access denied — insufficient role",
       });
     }
 

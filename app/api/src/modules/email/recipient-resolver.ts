@@ -1,4 +1,4 @@
-import { EmployeeSummary } from './ai.service';
+import { EmployeeSummary } from "./ai.service";
 
 /**
  * Minimum word length for word-level fuzzy matching.
@@ -48,12 +48,15 @@ export function resolveRecipient(
   recipientName: string,
   employees: EmployeeSummary[],
 ): { match: EmployeeSummary } | { candidates: EmployeeSummary[] } {
-  if (!recipientName || recipientName.trim() === '') {
+  if (!recipientName || recipientName.trim() === "") {
     return { candidates: employees };
   }
 
   const scored = employees
-    .map((e) => ({ employee: e, score: fuzzyMatchScore(e.name, recipientName) }))
+    .map((e) => ({
+      employee: e,
+      score: fuzzyMatchScore(e.name, recipientName),
+    }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score);
 

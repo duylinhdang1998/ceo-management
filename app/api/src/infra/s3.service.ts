@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { Readable } from 'stream';
+} from "@aws-sdk/client-s3";
+import { Readable } from "stream";
 
 /**
  * S3Service — CMC Cloud S3-compatible storage.
@@ -23,14 +23,14 @@ export class S3Service {
   private readonly bucket: string;
 
   constructor() {
-    this.bucket = process.env.S3_BUCKET ?? 'ceo-reports';
+    this.bucket = process.env.S3_BUCKET ?? "ceo-reports";
     this.client = new S3Client({
-      endpoint: process.env.S3_ENDPOINT ?? 'https://s3.cmccloud.vn',
-      region: process.env.S3_REGION ?? 'hcm',
+      endpoint: process.env.S3_ENDPOINT ?? "https://s3.cmccloud.vn",
+      region: process.env.S3_REGION ?? "hcm",
       forcePathStyle: true, // required for CMC + most non-AWS gateways
       credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY ?? '',
-        secretAccessKey: process.env.S3_SECRET_KEY ?? '',
+        accessKeyId: process.env.S3_ACCESS_KEY ?? "",
+        secretAccessKey: process.env.S3_SECRET_KEY ?? "",
       },
     });
   }
@@ -45,8 +45,8 @@ export class S3Service {
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
-        Body: Buffer.from(html, 'utf8'),
-        ContentType: 'text/html; charset=utf-8',
+        Body: Buffer.from(html, "utf8"),
+        ContentType: "text/html; charset=utf-8",
       }),
     );
   }
@@ -86,7 +86,7 @@ export class S3Service {
       }),
     );
 
-    const contentType = response.ContentType ?? 'application/octet-stream';
+    const contentType = response.ContentType ?? "application/octet-stream";
     const body = await S3Service.streamToBuffer(response.Body as Readable);
     return { body, contentType };
   }
@@ -108,11 +108,11 @@ export class S3Service {
   private static streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = [];
-      stream.on('data', (chunk: Buffer | string) =>
+      stream.on("data", (chunk: Buffer | string) =>
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
       );
-      stream.on('end', () => resolve(Buffer.concat(chunks)));
-      stream.on('error', reject);
+      stream.on("end", () => resolve(Buffer.concat(chunks)));
+      stream.on("error", reject);
     });
   }
 }

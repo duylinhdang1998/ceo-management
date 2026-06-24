@@ -3,18 +3,18 @@ import {
   UnauthorizedException,
   BadRequestException,
   Inject,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Pool } from 'pg';
-import * as bcrypt from 'bcryptjs';
-import { DB_POOL } from '../../common/db/db.module';
-import { LoginDto } from './dto/login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtPayload } from '../../common/auth/current-user.decorator';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Pool } from "pg";
+import * as bcrypt from "bcryptjs";
+import { DB_POOL } from "../../common/db/db.module";
+import { LoginDto } from "./dto/login.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { JwtPayload } from "../../common/auth/current-user.decorator";
 
 const BCRYPT_ROUNDS = 12;
 // Generic message prevents user enumeration
-const INVALID_CREDENTIALS_MSG = 'Email hoặc mật khẩu không đúng';
+const INVALID_CREDENTIALS_MSG = "Email hoặc mật khẩu không đúng";
 
 interface UserRow {
   id: string;
@@ -61,27 +61,27 @@ export class AuthService {
     // Always run bcrypt.compare to resist timing attacks,
     // even when user is not found (compare against a pre-computed dummy hash)
     const DUMMY_HASH =
-      '$2b$12$cb.I6xUF5Q7yahZSEbKlf.bADWrS1CAZS/lBd0068v6LR.80RvZIK';
+      "$2b$12$cb.I6xUF5Q7yahZSEbKlf.bADWrS1CAZS/lBd0068v6LR.80RvZIK";
     const hashToCompare = user ? user.password_hash : DUMMY_HASH;
     const passwordValid = await bcrypt.compare(dto.password, hashToCompare);
 
     if (!user || !passwordValid) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
+        code: "UNAUTHORIZED",
         message: INVALID_CREDENTIALS_MSG,
       });
     }
 
     if (!user.is_active) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
-        message: 'Tài khoản đã bị vô hiệu hóa',
+        code: "UNAUTHORIZED",
+        message: "Tài khoản đã bị vô hiệu hóa",
       });
     }
 
     const payload: JwtPayload = {
       sub: user.id,
-      role: user.role as JwtPayload['role'],
+      role: user.role as JwtPayload["role"],
       mustChangePassword: user.must_change_password,
     };
 
@@ -119,25 +119,28 @@ export class AuthService {
     const user = result.rows[0];
     if (!user) {
       throw new UnauthorizedException({
-        code: 'UNAUTHORIZED',
+        code: "UNAUTHORIZED",
         message: INVALID_CREDENTIALS_MSG,
       });
     }
 
     // Verify oldPassword against stored hash
-    const oldPasswordValid = await bcrypt.compare(dto.oldPassword, user.password_hash);
+    const oldPasswordValid = await bcrypt.compare(
+      dto.oldPassword,
+      user.password_hash,
+    );
     if (!oldPasswordValid) {
       throw new BadRequestException({
-        code: 'BAD_REQUEST',
-        message: 'Mật khẩu cũ không đúng',
+        code: "BAD_REQUEST",
+        message: "Mật khẩu cũ không đúng",
       });
     }
 
     // New password must not be the same as the old one
     if (dto.newPassword === dto.oldPassword) {
       throw new BadRequestException({
-        code: 'BAD_REQUEST',
-        message: 'Mật khẩu mới không được trùng mật khẩu cũ',
+        code: "BAD_REQUEST",
+        message: "Mật khẩu mới không được trùng mật khẩu cũ",
       });
     }
 
@@ -152,6 +155,6 @@ export class AuthService {
       [newHash, userId],
     );
 
-    return { message: 'Đổi mật khẩu thành công' };
+    return { message: "Đổi mật khẩu thành công" };
   }
 }

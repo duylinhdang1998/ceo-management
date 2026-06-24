@@ -1,8 +1,8 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
 export interface JwtPayload {
   sub: string;
-  role: 'super_admin' | 'employee';
+  role: "super_admin" | "employee";
   mustChangePassword: boolean;
   iat?: number;
   exp?: number;

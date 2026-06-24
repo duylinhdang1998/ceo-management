@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from "@nestjs/common";
 
 /**
  * Minimal representation of an employee passed to the AI to help it
@@ -63,9 +67,9 @@ export class AiService implements IAiService {
 
   constructor() {
     this.baseUrl =
-      process.env.AI_BASE_URL ?? 'https://platform.beeknoee.com/api/v1';
-    this.apiKey = process.env.AI_API_KEY ?? '';
-    this.model = process.env.AI_MODEL ?? 'gemini-2.5-flash';
+      process.env.AI_BASE_URL ?? "https://platform.beeknoee.com/api/v1";
+    this.apiKey = process.env.AI_API_KEY ?? "";
+    this.model = process.env.AI_MODEL ?? "gemini-2.5-flash";
   }
 
   /**
@@ -81,7 +85,7 @@ export class AiService implements IAiService {
   ): Promise<EmailDraft> {
     const employeeListText = employees
       .map((e, i) => `${i + 1}. ${e.name} <${e.email}>`)
-      .join('\n');
+      .join("\n");
 
     const systemPrompt = `You are an AI assistant helping a CEO compose internal emails.
 You will receive a prompt describing the email intent and a list of employees.
@@ -104,9 +108,9 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
     try {
       rawText = await this.callChatCompletions(systemPrompt, userMessage);
     } catch (err) {
-      this.logger.error('AI API call failed', err);
+      this.logger.error("AI API call failed", err);
       throw new InternalServerErrorException(
-        'AI service unavailable — could not compose email draft',
+        "AI service unavailable — could not compose email draft",
       );
     }
 
@@ -124,28 +128,28 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
     const url = `${this.baseUrl}/chat/completions`;
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
         ],
         // Some OpenAI-compatible gateways support response_format;
         // beeknoee passes this through to Gemini which honours it.
         // We also instruct via system prompt as a fallback.
-        response_format: { type: 'json_object' },
+        response_format: { type: "json_object" },
         temperature: 0.3, // low temp for deterministic JSON
         max_tokens: 1024,
       }),
     });
 
     if (!response.ok) {
-      const body = await response.text().catch(() => '');
+      const body = await response.text().catch(() => "");
       throw new Error(
         `beeknoee /chat/completions returned ${response.status}: ${body}`,
       );
@@ -156,7 +160,7 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
     };
 
     const content = json?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || content.trim() === '') {
+    if (typeof content !== "string" || content.trim() === "") {
       throw new Error(
         `Unexpected response shape from AI: ${JSON.stringify(json)}`,
       );
@@ -177,8 +181,8 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
    */
   private parseEmailDraft(rawText: string): EmailDraft {
     const fallback: EmailDraft = {
-      recipientName: '',
-      subject: '',
+      recipientName: "",
+      subject: "",
       body: rawText.trim(),
     };
 
@@ -191,8 +195,8 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
 
     // Attempt 2 — strip markdown fences
     const stripped = rawText
-      .replace(/^```(?:json)?\s*/im, '')
-      .replace(/\s*```$/im, '')
+      .replace(/^```(?:json)?\s*/im, "")
+      .replace(/\s*```$/im, "")
       .trim();
     try {
       return this.validateDraft(JSON.parse(stripped));
@@ -219,19 +223,20 @@ If no specific recipient is mentioned, use an empty string for recipientName.`;
   /** Assert that a parsed object looks like an EmailDraft. */
   private validateDraft(parsed: unknown): EmailDraft {
     if (
-      typeof parsed !== 'object' ||
+      typeof parsed !== "object" ||
       parsed === null ||
-      !('subject' in parsed) ||
-      !('body' in parsed)
+      !("subject" in parsed) ||
+      !("body" in parsed)
     ) {
-      throw new Error('Parsed object missing required fields');
+      throw new Error("Parsed object missing required fields");
     }
 
     const obj = parsed as Record<string, unknown>;
     return {
-      recipientName: typeof obj.recipientName === 'string' ? obj.recipientName : '',
-      subject: typeof obj.subject === 'string' ? obj.subject : '',
-      body: typeof obj.body === 'string' ? obj.body : '',
+      recipientName:
+        typeof obj.recipientName === "string" ? obj.recipientName : "",
+      subject: typeof obj.subject === "string" ? obj.subject : "",
+      body: typeof obj.body === "string" ? obj.body : "",
     };
   }
 }
