@@ -8,7 +8,7 @@
  * node-pg-migrate JS migration format.
  */
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const BCRYPT_ROUNDS = 12;
 
