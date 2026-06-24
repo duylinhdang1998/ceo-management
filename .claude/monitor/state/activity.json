@@ -1,0 +1,104 @@
+{
+  "session_start": "2026-06-23T16:15:21Z",
+  "core_roles": {},
+  "subagents": [],
+  "history": [
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:netflix-backend-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:27:22Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:meta-react-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:27:34Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:netflix-devops-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:27:51Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:meta-react-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:33:10Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:netflix-devops-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:36:13Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:netflix-backend-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:36:41Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:google-code-reviewer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:37:18Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:google-code-reviewer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:40:45Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:netflix-backend-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:41:08Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:meta-react-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:41:14Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:netflix-devops-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:41:24Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:meta-react-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:42:41Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:netflix-devops-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:44:39Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:netflix-backend-architect",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:45:45Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "vfm-agent-company:google-qa-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:46:21Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "vfm-agent-company:google-qa-engineer",
+      "agentName": "unknown",
+      "timestamp": "2026-06-23T19:54:46Z"
+    }
+  ],
+  "sessions": {}
+}

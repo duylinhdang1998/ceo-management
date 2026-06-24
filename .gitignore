@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+build/
+
+# Env / secrets (NEVER commit)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Test / coverage
+coverage/
+**/coverage/
+coverage-report/
+**/coverage-report/
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Claude skill local config (runtime, machine-specific)
+.config/
+
+# TS build info
+*.tsbuildinfo
+
+# Playwright CLI snapshots (runtime artifacts)
+.playwright-cli/
+
+# Active core role (runtime state)
+.claude/.active-core
+
+# Subagent memory (runtime, machine-specific)
+.claude/agent-memory/
