@@ -36,6 +36,10 @@ services:
     env_file:
       - .env
     environment:
+      # Pin the in-container API port to 3000 (port mapping, nginx proxy and the
+      # healthcheck all assume 3000). Overrides any PORT in .env (which may be set
+      # for non-Docker local runs).
+      PORT: 3000
       # Override DATABASE_URL to point at the compose postgres service
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ceo_portal}
       NODE_ENV: production
