@@ -84,6 +84,7 @@ export function ChangePasswordForm() {
       {/* Old password */}
       <Input
         label="Mật khẩu hiện tại"
+        required
         type={showOld ? 'text' : 'password'}
         placeholder="••••••••"
         autoComplete="current-password"
@@ -108,6 +109,7 @@ export function ChangePasswordForm() {
       {/* New password */}
       <Input
         label="Mật khẩu mới"
+        required
         type={showNew ? 'text' : 'password'}
         placeholder="••••••••"
         autoComplete="new-password"
@@ -132,6 +134,7 @@ export function ChangePasswordForm() {
       {/* Confirm password */}
       <Input
         label="Xác nhận mật khẩu"
+        required
         type={showConfirm ? 'text' : 'password'}
         placeholder="••••••••"
         autoComplete="new-password"

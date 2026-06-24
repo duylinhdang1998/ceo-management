@@ -15,6 +15,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   isError?: boolean;
+  /** When true, renders a red asterisk after the label text */
+  required?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -26,6 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       leftIcon,
       rightIcon,
       isError,
+      required,
       disabled,
       className,
       id,
@@ -45,6 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className="mb-[6px] font-sans text-[14px] font-medium leading-[1.5] text-navy"
           >
             {label}
+            {required && <span className="text-error"> *</span>}
           </label>
         )}
 

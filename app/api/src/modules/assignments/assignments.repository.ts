@@ -131,6 +131,50 @@ export class AssignmentsRepository {
   }
 
   /**
+   * Replace the full assignee set for a report atomically.
+   * Removes any existing assignments not in the new set; adds missing ones.
+   * Idempotent — calling with the same set twice is safe.
+   */
+  async replaceAssignees(
+    reportId: string,
+    userIds: string[],
+    assignedBy: string,
+  ): Promise<void> {
+    if (userIds.length === 0) {
+      // Clear all assignments
+      await this.pool.query(
+        `DELETE FROM report_assignments WHERE report_id = $1`,
+        [reportId],
+      );
+      return;
+    }
+
+    // Remove assignments for users NOT in the new set
+    await this.pool.query(
+      `DELETE FROM report_assignments
+       WHERE report_id = $1 AND user_id <> ALL($2::uuid[])`,
+      [reportId, userIds],
+    );
+
+    // Add missing assignments (ON CONFLICT DO NOTHING for existing ones)
+    const valuePlaceholders = userIds.map((_, i) => {
+      const base = i * 3;
+      return `($${base + 1}, $${base + 2}, $${base + 3})`;
+    });
+    const params: string[] = [];
+    for (const userId of userIds) {
+      params.push(reportId, userId, assignedBy);
+    }
+
+    await this.pool.query(
+      `INSERT INTO report_assignments (report_id, user_id, assigned_by)
+       VALUES ${valuePlaceholders.join(', ')}
+       ON CONFLICT (report_id, user_id) DO NOTHING`,
+      params,
+    );
+  }
+
+  /**
    * Check whether a report exists (and is not soft-deleted).
    */
   async reportExists(reportId: string): Promise<boolean> {

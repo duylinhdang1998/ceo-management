@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, FileText, Users, Key, Mail, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { Modal } from '@/shared/ui/Modal';
 import { ToastContainer } from '@/shared/ui/Toast';
 import type { ToastItem } from '@/shared/ui/Toast';
@@ -16,21 +15,8 @@ import {
   useUpdateReport,
 } from '@/features/reports';
 import type { Report } from '@/features/reports';
-import type { CreateReportPayload, UpdateReportPayload } from '@/features/reports';
-
-// ── Nav items ──────────────────────────────────────────────────────────────
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-  { to: '/email', label: 'Gửi email AI', icon: <Mail size={18} /> },
-];
-
-const EMPLOYEE_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Báo cáo của tôi', icon: <FileText size={18} /> },
-];
+import type { CreateReportPayload, UpdateReportPayload } from '@/features/reports/hooks/useReportMutations';
+import { CEO_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── ReportsPage ────────────────────────────────────────────────────────────
 export default function ReportsPage() {
@@ -57,8 +43,8 @@ export default function ReportsPage() {
   const createReport = useCreateReport();
   const updateReport = useUpdateReport();
 
-  const handleCreate = (payload: CreateReportPayload | UpdateReportPayload) => {
-    createReport.mutate(payload as CreateReportPayload, {
+  const handleCreate = (payload: CreateReportPayload) => {
+    createReport.mutate(payload, {
       onSuccess: () => {
         showToast('Báo cáo đã được tạo thành công', 'success');
         setIsUploadOpen(false);
@@ -69,8 +55,8 @@ export default function ReportsPage() {
     });
   };
 
-  const handleUpdate = (payload: CreateReportPayload | UpdateReportPayload) => {
-    updateReport.mutate(payload as UpdateReportPayload, {
+  const handleUpdate = (payload: UpdateReportPayload) => {
+    updateReport.mutate(payload, {
       onSuccess: () => {
         showToast('Cập nhật thành công', 'success');
         setEditingReport(null);
@@ -99,7 +85,7 @@ export default function ReportsPage() {
   return (
     <>
       <PageLayout
-        navItems={isAdmin ? CEO_NAV : EMPLOYEE_NAV}
+        navItems={isAdmin ? CEO_NAV_ITEMS : EMPLOYEE_NAV_ITEMS}
         logo={<PortalLogo />}
         sidebarFooter={sidebarFooter}
         topbarTitle={isAdmin ? 'Quản lý báo cáo' : 'Báo cáo của tôi'}
@@ -131,25 +117,27 @@ export default function ReportsPage() {
         size="md"
       >
         <ReportUpload
-          onSubmit={handleCreate}
+          onSubmit={(p) => handleCreate(p)}
           onCancel={() => setIsUploadOpen(false)}
           isSubmitting={createReport.isPending}
         />
       </Modal>
 
-      {/* Edit modal (metadata only) */}
+      {/* Edit modal (metadata + optional file replacement) */}
       <Modal
         isOpen={Boolean(editingReport)}
         onClose={() => setEditingReport(null)}
         title="Chỉnh sửa báo cáo"
         size="md"
       >
-        <ReportForm
-          report={editingReport ?? undefined}
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingReport(null)}
-          isSubmitting={updateReport.isPending}
-        />
+        {editingReport && (
+          <ReportForm
+            report={editingReport}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditingReport(null)}
+            isSubmitting={updateReport.isPending}
+          />
+        )}
       </Modal>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

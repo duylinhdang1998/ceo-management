@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { AssignmentsRepository, AssigneePublic } from './assignments.repository';
 import { AssignUsersDto } from './dto/assign-users.dto';
+import { ReplaceAssigneesDto } from './dto/replace-assignees.dto';
 
 @Injectable()
 export class AssignmentsService {
@@ -53,6 +54,34 @@ export class AssignmentsService {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
     }
     return this.repo.listAssignees(reportId);
+  }
+
+  /**
+   * PUT /api/reports/:id/assignments — replace the full assignee set atomically.
+   * Adds missing users, removes users not in the new list.
+   * An empty userIds array clears all assignments.
+   */
+  async replaceAssignees(
+    reportId: string,
+    dto: ReplaceAssigneesDto,
+    replacedBy: string,
+  ): Promise<{ message: string; count: number }> {
+    const reportExists = await this.repo.reportExists(reportId);
+    if (!reportExists) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Báo cáo không tồn tại' });
+    }
+
+    // Verify all provided userIds exist (skip when clearing)
+    if (dto.userIds.length > 0) {
+      const existingCount = await this.repo.countExistingUsers(dto.userIds);
+      if (existingCount !== dto.userIds.length) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Một hoặc nhiều nhân viên không tồn tại' });
+      }
+    }
+
+    await this.repo.replaceAssignees(reportId, dto.userIds, replacedBy);
+
+    return { message: 'Cập nhật danh sách gán thành công', count: dto.userIds.length };
   }
 
   // ─── Methods exposed for BE#2 (ReportsModule) ─────────────────────────────

@@ -17,6 +17,24 @@ export interface PatRow {
   revoked_at: Date | null;
 }
 
+export interface PatPublic {
+  id: string;
+  name: string;
+  lastUsedAt: Date | null;
+  createdAt: Date;
+  revokedAt: Date | null;
+}
+
+function toPatPublic(row: PatRow): PatPublic {
+  return {
+    id: row.id,
+    name: row.name,
+    lastUsedAt: row.last_used_at,
+    createdAt: row.created_at,
+    revokedAt: row.revoked_at,
+  };
+}
+
 @Injectable()
 export class PatService {
   constructor(@Inject(DB_POOL) private readonly pool: Pool) {}
@@ -50,8 +68,8 @@ export class PatService {
     };
   }
 
-  /** List all non-revoked PATs for a user (no token hashes returned). */
-  async list(userId: string): Promise<PatRow[]> {
+  /** List all PATs for a user (no token hashes returned), camelCase for the FE. */
+  async list(userId: string): Promise<PatPublic[]> {
     const result = await this.pool.query<PatRow>(
       `SELECT id, name, last_used_at, created_at, revoked_at
        FROM personal_access_tokens
@@ -59,7 +77,7 @@ export class PatService {
        ORDER BY created_at DESC`,
       [userId],
     );
-    return result.rows;
+    return result.rows.map(toPatPublic);
   }
 
   /** Revoke a PAT by id. Only the owning user (super_admin) may revoke. */

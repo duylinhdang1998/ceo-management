@@ -11,10 +11,14 @@ export interface Report {
   s3Key?: string;
   createdAt: string;
   updatedAt: string;
+  /** Number of employees this report has been assigned to (returned by backend) */
+  assigneeCount?: number;
 }
 
 export interface ReportListParams {
   page?: number;
   limit?: number;
   search?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }

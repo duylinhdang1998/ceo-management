@@ -21,7 +21,7 @@ import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Pool } from 'pg';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../src/app.module';
 import { getPool } from '../src/common/db/pool';
 
@@ -439,6 +439,133 @@ describe('Feature: CEO gán báo cáo cho nhân viên (US-D1)', () => {
       const ids = data.map((a) => a.id);
       expect(ids).toContain(employeeAId);
       expect(ids).toContain(employeeBId);
+    });
+  });
+
+});
+
+// ============================================================
+// Feature: PUT /api/reports/:id/assignments — replace full set (US-D1 extension)
+// ============================================================
+
+describe('Feature: PUT assignments — replace full assignee set atomically', () => {
+
+  beforeEach(async () => {
+    await clearAssignmentsForReport(reportXId);
+    await clearAssignmentsForReport(reportYId);
+  });
+
+  describe('Scenario: PUT replaces existing assignments with a new set', () => {
+    it('should remove A, add B — only B remains', async () => {
+      // Pre-assign A
+      await request(app.getHttpServer())
+        .post(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [employeeAId] });
+
+      expect(await assignmentExists(reportXId, employeeAId)).toBe(true);
+
+      // PUT with B only — should remove A and add B
+      const res = await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [employeeBId] });
+
+      expect(res.status).toBe(200);
+      expect(await assignmentExists(reportXId, employeeAId)).toBe(false);
+      expect(await assignmentExists(reportXId, employeeBId)).toBe(true);
+      expect(await getAssignmentCount(reportXId)).toBe(1);
+    });
+  });
+
+  describe('Scenario: PUT with empty userIds clears all assignments', () => {
+    it('should clear all assignments when userIds is []', async () => {
+      // Pre-assign A and B
+      await request(app.getHttpServer())
+        .post(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [employeeAId, employeeBId] });
+
+      expect(await getAssignmentCount(reportXId)).toBe(2);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [] });
+
+      expect(res.status).toBe(200);
+      expect(await getAssignmentCount(reportXId)).toBe(0);
+    });
+  });
+
+  describe('Scenario: PUT is idempotent — calling twice with same set is safe', () => {
+    it('should not duplicate records when called twice with same userIds', async () => {
+      const payload = { userIds: [employeeAId, employeeBId] };
+
+      await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send(payload);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(await getAssignmentCount(reportXId)).toBe(2);
+    });
+  });
+
+  describe('Scenario: PUT with non-existent report — 404', () => {
+    it('should return 404 for non-existent report', async () => {
+      const res = await request(app.getHttpServer())
+        .put('/api/reports/00000000-0000-4000-8000-000000000099/assignments')
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [employeeAId] });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('Scenario: PUT with non-existent userId — 404', () => {
+    it('should return 404 when a userId does not exist', async () => {
+      const res = await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: ['00000000-0000-4000-8000-000000000099'] });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('Scenario: Employee cannot call PUT assignments — 403', () => {
+    it('should return 403 for employee role', async () => {
+      const res = await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${employeeAToken}`)
+        .send({ userIds: [employeeBId] });
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Scenario: GET /assignments returns current set for popup pre-check', () => {
+    it('should return current assignees after PUT replace', async () => {
+      await request(app.getHttpServer())
+        .put(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ userIds: [employeeAId, employeeCId] });
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/reports/${reportXId}/assignments`)
+        .set('Authorization', `Bearer ${ceoToken}`);
+
+      expect(res.status).toBe(200);
+      const ids: string[] = (res.body.data as Array<{ id: string }>).map((a) => a.id);
+      expect(ids).toContain(employeeAId);
+      expect(ids).toContain(employeeCId);
+      expect(ids).not.toContain(employeeBId);
     });
   });
 

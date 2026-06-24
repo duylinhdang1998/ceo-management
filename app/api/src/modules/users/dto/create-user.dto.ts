@@ -4,7 +4,6 @@ import {
   IsString,
   IsOptional,
   Matches,
-  MinLength,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -17,8 +16,7 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'password không được để trống' })
-  @MinLength(8, { message: 'password phải có ít nhất 8 ký tự' })
+  @IsNotEmpty({ message: 'Mật khẩu tạm không được để trống' })
   password: string;
 
   @IsString()

@@ -1,30 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, LogOut, Eye } from 'lucide-react';
+import { LogOut, Eye } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { useAuthStore, selectUser } from '@/shared/stores/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { useReports } from '@/features/reports';
 import type { Report } from '@/features/reports';
-
-// ── Employee sidebar navigation (limited — no admin items) ────────────────
-// US-A3: employee sidebar MUST NOT have:
-//   - "Quản lý nhân viên", admin CRUD, "Gửi email AI"
-const EMPLOYEE_NAV_ITEMS: SidebarNavItem[] = [
-  {
-    to: '/',
-    label: 'Dashboard',
-    icon: <LayoutDashboard size={18} />,
-    end: true,
-  },
-  {
-    to: '/reports',
-    label: 'Báo cáo của tôi',
-    icon: <FileText size={18} />,
-  },
-];
+import { EMPLOYEE_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── AssignedReportRow ──────────────────────────────────────────────────────
 function AssignedReportRow({ report }: { report: Report }) {

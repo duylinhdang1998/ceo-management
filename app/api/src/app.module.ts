@@ -23,18 +23,16 @@ const isTest = process.env.NODE_ENV === 'test';
 
 @Module({
   imports: [
+    // IMPORTANT: only ONE named throttler ('default') is registered globally.
+    // With multiple named throttlers, NestJS applies EVERY one to EVERY route
+    // (a previous 'email' bucket of 5/min silently capped ALL endpoints → 429).
+    // Sensitive routes tighten the default bucket per-handler via @Throttle({ default: {...} }):
+    //   login → 20/min (brute-force guard), AI email compose/send → 5/min. Health is @SkipThrottle.
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60_000,
-        limit: isTest ? 100_000 : 100,
-      },
-      {
-        // Tighter bucket for AI email endpoints (compose + send).
-        // Per-route @Throttle({ email: { limit: 5, ttl: 60000 } }) activates this.
-        name: 'email',
-        ttl: 60_000,
-        limit: isTest ? 100_000 : 5,
+        limit: isTest ? 100_000 : 1000,
       },
     ]),
     DbModule,

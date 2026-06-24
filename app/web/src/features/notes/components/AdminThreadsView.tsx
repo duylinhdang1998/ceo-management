@@ -50,7 +50,7 @@ export function AdminThreadsView({
           'Nhân viên';
 
         return (
-          <div key={firstNote?.threadOwnerId ?? ownerName} className="flex flex-col gap-sm">
+          <div key={firstNote?.threadOwnerId ?? ownerName} className="flex flex-col gap-[12px]">
             {/* Employee thread header */}
             <div className="flex items-center gap-sm">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sage font-heading text-caption font-semibold text-white">
@@ -64,8 +64,8 @@ export function AdminThreadsView({
               </span>
             </div>
 
-            {/* Notes in this thread */}
-            <div className="flex flex-col gap-md">
+            {/* Notes in this thread — 16px gap between top-level comments */}
+            <div className="flex flex-col gap-[16px]">
               {ownerNotes.map((note) => (
                 <NoteItem
                   key={note.id}

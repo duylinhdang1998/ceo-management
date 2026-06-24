@@ -33,6 +33,7 @@ export function CreateTokenForm({ isLoading, onSubmit }: CreateTokenFormProps) {
       <div className="flex-1">
         <Input
           label="Tên token"
+          required
           placeholder="Ví dụ: Claude Skill Production"
           isError={Boolean(errors.name)}
           errorText={errors.name?.message}

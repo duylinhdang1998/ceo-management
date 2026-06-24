@@ -1,14 +1,21 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import * as express from 'express';
 import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Raise JSON and URL-encoded body limits to support large htmlContent payloads (up to 70 MB HTML strings in JSON).
+  // Multer handles multipart uploads separately and is not affected by these limits.
+  app.use(express.json({ limit: '75mb' }));
+  app.use(express.urlencoded({ limit: '75mb', extended: true }));
 
   // Security headers
   app.use(helmet());

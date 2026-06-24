@@ -1,21 +1,12 @@
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FileText, Users, Key, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
 import { Button } from '@/shared/ui/Button';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { useAuthStore, selectUser } from '@/shared/stores/authStore';
 import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { AssignmentPanel } from '@/features/assignments/components/AssignmentPanel';
 import { useReportDetail } from '@/features/assignments/hooks/useAssignments';
-
-// ── Nav items (super_admin only) ───────────────────────────────────────────
-
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-];
+import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── AssignReportPage ──────────────────────────────────────────────────────
 // Route: /reports/:id/assign (super_admin only — FE#1 will add the route to routes.tsx)
@@ -52,7 +43,7 @@ export default function AssignReportPage() {
 
   return (
     <PageLayout
-      navItems={CEO_NAV}
+      navItems={CEO_NAV_ITEMS}
       logo={<PortalLogo />}
       sidebarFooter={sidebarFooter}
       topbarTitle="Gán nhân viên"

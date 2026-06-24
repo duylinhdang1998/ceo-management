@@ -1,39 +1,17 @@
 import { useParams, Navigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, Key, Mail, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { useAuthStore, selectUser, selectRole } from '@/shared/stores/authStore';
 import { Button } from '@/shared/ui/Button';
+import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { ReportViewer } from '@/features/reports';
-import { NotePanel } from '@/features/notes';
-
-// ── Nav items ──────────────────────────────────────────────────────────────
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-  { to: '/email', label: 'Gửi email AI', icon: <Mail size={18} /> },
-];
-
-const EMPLOYEE_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Báo cáo của tôi', icon: <FileText size={18} /> },
-];
-
-// ── Logo ───────────────────────────────────────────────────────────────────
-function PortalLogo() {
-  return (
-    <span className="font-heading text-[16px] font-semibold text-white tracking-tight">
-      CEO Portal
-    </span>
-  );
-}
+import { CEO_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── ReportViewPage ─────────────────────────────────────────────────────────
 // Route: /reports/:id
 // The API enforces assignment-based access control; the UI surfaces the 403
 // as an error state inside ReportIframe. No client-side pre-auth needed.
+// Notes are now shown inside a right-side Drawer opened from ReportViewer.
 export default function ReportViewPage() {
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore(selectUser);
@@ -63,22 +41,17 @@ export default function ReportViewPage() {
 
   return (
     <PageLayout
-      navItems={isAdmin ? CEO_NAV : EMPLOYEE_NAV}
+      navItems={isAdmin ? CEO_NAV_ITEMS : EMPLOYEE_NAV_ITEMS}
       logo={<PortalLogo />}
       sidebarFooter={sidebarFooter}
       topbarTitle="Xem báo cáo"
     >
-      {/* ReportViewer + NotePanel stacked vertically */}
-      <div className="flex flex-col gap-xl pb-xl">
-        <ReportViewer reportId={id} />
-        {user && (
-          <NotePanel
-            reportId={id}
-            currentUserId={user.id}
-            isAdmin={isAdmin}
-          />
-        )}
-      </div>
+      {/* ReportViewer now owns the notes drawer — no inline NotePanel */}
+      <ReportViewer
+        reportId={id}
+        currentUserId={user?.id}
+        isAdmin={isAdmin}
+      />
     </PageLayout>
   );
 }

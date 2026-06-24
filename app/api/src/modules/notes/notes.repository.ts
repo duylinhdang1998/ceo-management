@@ -12,6 +12,17 @@ export interface NoteRow {
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
+  // Optional — populated only by the list queries that JOIN users
+  author_name?: string;
+  author_email?: string;
+  thread_owner_name?: string;
+  thread_owner_email?: string;
+}
+
+export interface NoteUser {
+  id: string;
+  name: string;
+  email: string;
 }
 
 export interface NotePublic {
@@ -23,11 +34,13 @@ export interface NotePublic {
   content: string;
   createdAt: Date;
   updatedAt: Date;
+  author?: NoteUser;
+  threadOwner?: NoteUser;
   children?: NotePublic[];
 }
 
 function toPublic(row: NoteRow): NotePublic {
-  return {
+  const note: NotePublic = {
     id: row.id,
     reportId: row.report_id,
     threadOwnerId: row.thread_owner_id,
@@ -37,6 +50,21 @@ function toPublic(row: NoteRow): NotePublic {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (row.author_name !== undefined) {
+    note.author = {
+      id: row.author_id,
+      name: row.author_name,
+      email: row.author_email ?? '',
+    };
+  }
+  if (row.thread_owner_name !== undefined) {
+    note.threadOwner = {
+      id: row.thread_owner_id,
+      name: row.thread_owner_name,
+      email: row.thread_owner_email ?? '',
+    };
+  }
+  return note;
 }
 
 @Injectable()
@@ -81,13 +109,17 @@ export class NotesRepository {
     threadOwnerId: string,
   ): Promise<NotePublic[]> {
     const res = await this.pool.query<NoteRow>(
-      `SELECT id, report_id, thread_owner_id, author_id, parent_id,
-              content, created_at, updated_at, deleted_at
-       FROM notes
-       WHERE report_id = $1
-         AND thread_owner_id = $2
-         AND deleted_at IS NULL
-       ORDER BY created_at ASC`,
+      `SELECT n.id, n.report_id, n.thread_owner_id, n.author_id, n.parent_id,
+              n.content, n.created_at, n.updated_at, n.deleted_at,
+              a.name AS author_name, a.email AS author_email,
+              o.name AS thread_owner_name, o.email AS thread_owner_email
+       FROM notes n
+       JOIN users a ON a.id = n.author_id
+       JOIN users o ON o.id = n.thread_owner_id
+       WHERE n.report_id = $1
+         AND n.thread_owner_id = $2
+         AND n.deleted_at IS NULL
+       ORDER BY n.created_at ASC`,
       [reportId, threadOwnerId],
     );
     return this.nestNotes(res.rows);
@@ -99,12 +131,16 @@ export class NotesRepository {
    */
   async findAllByReport(reportId: string): Promise<NotePublic[]> {
     const res = await this.pool.query<NoteRow>(
-      `SELECT id, report_id, thread_owner_id, author_id, parent_id,
-              content, created_at, updated_at, deleted_at
-       FROM notes
-       WHERE report_id = $1
-         AND deleted_at IS NULL
-       ORDER BY created_at ASC`,
+      `SELECT n.id, n.report_id, n.thread_owner_id, n.author_id, n.parent_id,
+              n.content, n.created_at, n.updated_at, n.deleted_at,
+              a.name AS author_name, a.email AS author_email,
+              o.name AS thread_owner_name, o.email AS thread_owner_email
+       FROM notes n
+       JOIN users a ON a.id = n.author_id
+       JOIN users o ON o.id = n.thread_owner_id
+       WHERE n.report_id = $1
+         AND n.deleted_at IS NULL
+       ORDER BY n.created_at ASC`,
       [reportId],
     );
     return this.nestNotes(res.rows);

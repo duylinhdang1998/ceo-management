@@ -4,6 +4,8 @@ import { Table, type TableColumn } from '@/shared/ui/Table';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Chip } from '@/shared/ui/Chip';
+import { Tooltip } from '@/shared/ui/Tooltip';
+import { Pagination } from '@/shared/ui/Pagination';
 import type { User } from '@/shared/types';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { useUsers } from '../hooks/useUsers';
@@ -17,44 +19,6 @@ export interface UserListProps {
   onResetPassword: (user: User) => void;
 }
 
-// ── Pagination Controls ───────────────────────────────────────────────────
-
-interface PaginationControlsProps {
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
-
-function PaginationControls({ page, totalPages, onPageChange }: PaginationControlsProps) {
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="flex items-center justify-between border-t border-nav-border px-lg py-sm">
-      <span className="font-sans text-[14px] text-helper-text">
-        Trang {page} / {totalPages}
-      </span>
-      <div className="flex gap-xs">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          Trước
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Tiếp
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 // ── UserList component ────────────────────────────────────────────────────
 
 export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
@@ -63,7 +27,7 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
   const [page, setPage] = useState(1);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const { data, isLoading } = useUsers({ search: debouncedSearch, page });
+  const { data, isLoading } = useUsers({ search: debouncedSearch, page, limit: 15 });
   const { mutate: toggleActive, isPending: isToggling } = useToggleUserActive();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -152,37 +116,43 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
             <Button
               variant="ghost"
               size="sm"
-              title={user.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+              aria-label={user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'}
               onClick={() => handleToggleActive(user)}
             >
               <span className="font-sans text-[12px]">
                 {user.isActive ? 'Khóa' : 'Mở khóa'}
               </span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Reset mật khẩu"
-              onClick={() => onResetPassword(user)}
-            >
-              <RotateCcw size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Sửa"
-              onClick={() => onEdit(user)}
-            >
-              <Pencil size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Xóa"
-              onClick={() => setDeleteConfirmId(user.id)}
-            >
-              <Trash2 size={14} className="text-error" />
-            </Button>
+            <Tooltip label="Đặt lại mật khẩu">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Đặt lại mật khẩu"
+                onClick={() => onResetPassword(user)}
+              >
+                <RotateCcw size={14} />
+              </Button>
+            </Tooltip>
+            <Tooltip label="Sửa">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Sửa"
+                onClick={() => onEdit(user)}
+              >
+                <Pencil size={14} />
+              </Button>
+            </Tooltip>
+            <Tooltip label="Xoá">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Xoá"
+                onClick={() => setDeleteConfirmId(user.id)}
+              >
+                <Trash2 size={14} className="text-error" />
+              </Button>
+            </Tooltip>
           </div>
         );
       },
@@ -216,10 +186,12 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
       />
 
       {/* Pagination */}
-      <PaginationControls
+      <Pagination
         page={data?.meta.page ?? 1}
         totalPages={data?.meta.totalPages ?? 1}
+        total={data?.meta.total ?? 0}
         onPageChange={setPage}
+        itemLabel="nhân viên"
       />
     </div>
   );

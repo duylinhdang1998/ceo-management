@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, FileText, Users, Key, Mail, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { ToastContainer } from '@/shared/ui/Toast';
 import type { ToastItem } from '@/shared/ui/Toast';
 import { Button } from '@/shared/ui/Button';
@@ -15,16 +14,7 @@ import {
   CreateTokenForm,
   TokenRevealModal,
 } from '@/features/tokens';
-
-// ── Nav items ──────────────────────────────────────────────────────────────
-
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-  { to: '/email', label: 'Gửi email AI', icon: <Mail size={18} /> },
-];
+import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── TokensPage ─────────────────────────────────────────────────────────────
 
@@ -102,7 +92,7 @@ export default function TokensPage() {
 
   return (
     <PageLayout
-      navItems={CEO_NAV}
+      navItems={CEO_NAV_ITEMS}
       logo={<PortalLogo />}
       sidebarFooter={sidebarFooter}
       topbarTitle="API Tokens"

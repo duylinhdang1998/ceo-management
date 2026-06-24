@@ -1,49 +1,13 @@
-import {
-  LayoutDashboard,
-  FileText,
-  Users,
-  Key,
-  Mail,
-  LogOut,
-} from 'lucide-react';
+import { FileText, Users, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { useAuthStore, selectUser } from '@/shared/stores/authStore';
 import { Button } from '@/shared/ui/Button';
 import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { StatCard } from './StatCard';
 import { useReports } from '@/features/reports';
-
-// ── CEO sidebar navigation (full admin menu) ──────────────────────────────
-const CEO_NAV_ITEMS: SidebarNavItem[] = [
-  {
-    to: '/',
-    label: 'Dashboard',
-    icon: <LayoutDashboard size={18} />,
-    end: true,
-  },
-  {
-    to: '/reports',
-    label: 'Quản lý báo cáo',
-    icon: <FileText size={18} />,
-  },
-  {
-    to: '/users',
-    label: 'Quản lý nhân viên',
-    icon: <Users size={18} />,
-  },
-  {
-    to: '/tokens',
-    label: 'API Tokens',
-    icon: <Key size={18} />,
-  },
-  {
-    to: '/email',
-    label: 'Gửi email AI',
-    icon: <Mail size={18} />,
-  },
-];
+import { useUsers } from '@/shared/hooks/useUsers';
+import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── CeoDashboard ──────────────────────────────────────────────────────────
 export function CeoDashboard() {
@@ -54,6 +18,10 @@ export function CeoDashboard() {
   // Real data: total reports count (backend filters by role automatically)
   const { data: reportsData, isLoading: reportsLoading } = useReports({ limit: 1 });
   const totalReports = reportsData?.meta?.total;
+
+  // Real data: total employee count
+  const { data: usersData, isLoading: usersLoading } = useUsers({ limit: 1 });
+  const totalUsers = usersData?.meta?.total;
 
   const sidebarFooter = (
     <div className="flex flex-col gap-xs">
@@ -101,7 +69,7 @@ export function CeoDashboard() {
         />
         <StatCard
           label="Nhân viên"
-          value="—"
+          value={usersLoading ? '...' : String(totalUsers ?? 0)}
           description="Quản lý danh sách nhân viên"
         />
         <StatCard

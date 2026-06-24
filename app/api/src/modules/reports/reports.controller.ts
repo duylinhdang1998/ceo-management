@@ -31,6 +31,7 @@ import { paginated } from '../../common/response.interceptor';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { BulkDeleteReportsDto } from './dto/bulk-delete.dto';
 
 /**
  * ReportsController — implements all endpoints per architecture §8 and SRS FR2/FR7.
@@ -50,7 +51,7 @@ import { UpdateReportDto } from './dto/update-report.dto';
 // ---------------------------------------------------------------------------
 const multerMemoryOptions = {
   storage: memoryStorage(),
-  limits: { fileSize: 6 * 1024 * 1024 }, // 6 MB hard limit (service checks 5 MB)
+  limits: { fileSize: 72 * 1024 * 1024 }, // 72 MB hard limit (service checks 70 MB)
 };
 
 // ---------------------------------------------------------------------------
@@ -91,6 +92,19 @@ export class ReportsController {
   }
 
   // --------------------------------------------------------------------------
+  // POST /api/reports/bulk-delete — bulk soft delete (super_admin JWT only)
+  // NOTE: declared BEFORE :id routes so NestJS does not match "bulk-delete" as
+  // a param value.
+  // --------------------------------------------------------------------------
+  @Post('bulk-delete')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('super_admin')
+  @HttpCode(HttpStatus.OK)
+  async bulkRemove(@Body() dto: BulkDeleteReportsDto) {
+    return this.reportsService.bulkRemove(dto.ids);
+  }
+
+  // --------------------------------------------------------------------------
   // DELETE /api/reports/:id — soft delete (super_admin JWT only)
   // --------------------------------------------------------------------------
   @Delete(':id')
@@ -119,6 +133,7 @@ export class ReportsController {
       total: result.total,
       page: result.page,
       limit: result.limit,
+      totalPages: Math.ceil(result.total / result.limit),
     });
   }
 

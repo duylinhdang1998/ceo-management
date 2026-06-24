@@ -8,15 +8,14 @@ import { Input } from '@/shared/ui/Input';
 import type { CreateReportPayload } from '../hooks/useReportMutations';
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE_BYTES = 70 * 1024 * 1024; // 70 MB
 const ACCEPTED_MIME = 'text/html';
 const ACCEPTED_EXT = '.html';
 
-// ── Validation schema ──────────────────────────────────────────────────────
+// ── Validation schema (no status — backend sets published by default) ──────
 const uploadSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc').max(200, 'Tiêu đề tối đa 200 ký tự'),
   description: z.string().max(1000).optional(),
-  status: z.enum(['draft', 'published']),
 });
 
 type UploadFormValues = z.infer<typeof uploadSchema>;
@@ -29,8 +28,8 @@ export interface ReportUploadProps {
 }
 
 // ── ReportUpload ───────────────────────────────────────────────────────────
-// Create-only form with file upload. Validates file type (.html) and size (≤5MB)
-// client-side before sending to the server.
+// Create-only form with file upload. No status field — backend sets published.
+// Validates file type (.html) and size (≤70MB) client-side.
 export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -42,7 +41,7 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
     formState: { errors },
   } = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
-    defaultValues: { status: 'draft' },
+    defaultValues: { title: '', description: '' },
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,14 +56,13 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
     const isHtmlExt = file.name.toLowerCase().endsWith(ACCEPTED_EXT);
     if (!isHtmlMime && !isHtmlExt) {
       setFileError('Chỉ chấp nhận file HTML (.html)');
-      // Reset input so the same file can be re-selected after correction
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    // Size check — ≤ 5 MB
+    // Size check — ≤ 70 MB
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setFileError(`Kích thước file vượt quá 5MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+      setFileError(`Kích thước file vượt quá 70MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -83,7 +81,8 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
       setFileError('Vui lòng chọn file HTML');
       return;
     }
-    onSubmit({ ...values, file: selectedFile });
+    // No status sent — backend rejects it
+    onSubmit({ title: values.title, description: values.description, file: selectedFile });
   };
 
   return (
@@ -91,6 +90,7 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
       {/* Title */}
       <Input
         label="Tiêu đề"
+        required
         placeholder="Nhập tiêu đề báo cáo"
         isError={Boolean(errors.title)}
         errorText={errors.title?.message}
@@ -108,18 +108,6 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
         />
       </div>
 
-      {/* Status */}
-      <div className="flex flex-col gap-[6px]">
-        <label className="font-sans text-[14px] font-medium text-navy">Trạng thái</label>
-        <select
-          className="w-full h-[42px] rounded border border-nav-border bg-surface px-[14px] font-sans text-[14px] text-navy hover:border-navy focus:border-2 focus:border-navy focus:outline-none transition-all duration-150 cursor-pointer"
-          {...register('status')}
-        >
-          <option value="draft">Nháp (Draft)</option>
-          <option value="published">Đã xuất bản (Published)</option>
-        </select>
-      </div>
-
       {/* File upload */}
       <div className="flex flex-col gap-[6px]">
         <label className="font-sans text-[14px] font-medium text-navy">
@@ -127,7 +115,6 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
         </label>
 
         {selectedFile ? (
-          /* Selected file preview */
           <div className="flex items-center gap-sm rounded border border-nav-border bg-bg px-[14px] py-[10px]">
             <FileText size={16} className="shrink-0 text-helper-text" />
             <span className="flex-1 min-w-0 truncate font-sans text-[14px] text-navy">
@@ -146,7 +133,6 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
             </button>
           </div>
         ) : (
-          /* Drop zone / browse button */
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -154,16 +140,11 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
             data-testid="upload-dropzone"
           >
             <Upload size={24} className="text-helper-text" />
-            <span className="font-sans text-[14px] font-medium text-navy">
-              Chọn file HTML
-            </span>
-            <span className="font-sans text-[12px] text-helper-text">
-              Chỉ chấp nhận .html — tối đa 5MB
-            </span>
+            <span className="font-sans text-[14px] font-medium text-navy">Chọn file HTML</span>
+            <span className="font-sans text-[12px] text-helper-text">Chỉ chấp nhận .html — tối đa 70MB</span>
           </button>
         )}
 
-        {/* Hidden input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -179,7 +160,7 @@ export function ReportUpload({ onSubmit, onCancel, isSubmitting }: ReportUploadP
           </p>
         )}
         <p className="font-sans text-[12px] text-helper-text">
-          Kích thước giới hạn: 5MB. Chỉ chấp nhận định dạng HTML.
+          Kích thước giới hạn: 70MB. Chỉ chấp nhận định dạng HTML.
         </p>
       </div>
 

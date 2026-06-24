@@ -1,22 +1,12 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, FileText, Users, Key, Mail, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { ToastContainer } from '@/shared/ui/Toast';
 import type { ToastItem } from '@/shared/ui/Toast';
 import { useAuthStore, selectUser } from '@/shared/stores/authStore';
 import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { AiEmailComposer } from '@/features/email';
-import { useReports } from '@/features/reports';
-
-// ── Nav items (super_admin only — this route is guarded at router level) ──
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-  { to: '/email', label: 'Gửi email AI', icon: <Mail size={18} /> },
-];
+import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── EmailPage ──────────────────────────────────────────────────────────────
 // Route: /email — super_admin only (RoleGuard in routes.tsx enforces this).
@@ -41,10 +31,6 @@ export default function EmailPage() {
     [],
   );
 
-  // Fetch published reports to supply the report picker in the composer
-  const { data: reportsData } = useReports({ limit: 100 });
-  const publishedReports = (reportsData?.data ?? []).filter((r) => r.status === 'published');
-
   // Sidebar footer: user info + logout
   const sidebarFooter = (
     <div className="flex flex-col gap-sm">
@@ -67,7 +53,7 @@ export default function EmailPage() {
   return (
     <>
       <PageLayout
-        navItems={CEO_NAV}
+        navItems={CEO_NAV_ITEMS}
         logo={<PortalLogo />}
         sidebarFooter={sidebarFooter}
         topbarTitle="Gửi email AI"
@@ -84,7 +70,6 @@ export default function EmailPage() {
             </p>
 
             <AiEmailComposer
-              reports={publishedReports}
               onSendSuccess={() =>
                 showToast('Gửi email thành công', 'success', 'Email đã được gửi tới người nhận.')
               }

@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react';
-import { Send, Sparkles, X } from 'lucide-react';
+import { Send, Sparkles, X, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Tooltip } from '@/shared/ui/Tooltip';
 import { cn } from '@/shared/lib/cn';
 import { useAiCompose } from '../hooks/useAiCompose';
 import { useSendEmail } from '../hooks/useSendEmail';
 import { RecipientPicker } from './RecipientPicker';
 import { AttachmentPicker } from './AttachmentPicker';
 import { TextareaField } from './TextareaField';
-import { ReportSelector } from './ReportSelector';
+import { ReportAttachPopup } from './ReportAttachPopup';
 import type { ComposeRecipient } from '../hooks/useAiCompose';
 import type { User } from '@/shared/types';
-import type { Report } from '@/shared/types/report.types';
 
 // ── AiEmailComposer ────────────────────────────────────────────────────────
 // Full AI email compose + send flow.
@@ -21,15 +21,12 @@ import type { Report } from '@/shared/types/report.types';
 // 4. CEO clicks Send → calls /send (multipart) → toast handled by parent.
 
 export interface AiEmailComposerProps {
-  /** Optional list of reports to show in the report picker */
-  reports?: Pick<Report, 'id' | 'title'>[];
   /** Callbacks after successful send or error — parent shows toast */
   onSendSuccess: () => void;
   onSendError: (message: string) => void;
 }
 
 export function AiEmailComposer({
-  reports = [],
   onSendSuccess,
   onSendError,
 }: AiEmailComposerProps) {
@@ -51,8 +48,10 @@ export function AiEmailComposer({
   const [subjectError, setSubjectError] = useState('');
   const [bodyError, setBodyError] = useState('');
 
-  // Report link
+  // Report link (popup-based)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedReportTitle, setSelectedReportTitle] = useState<string | null>(null);
+  const [reportPopupOpen, setReportPopupOpen] = useState(false);
 
   // File attachments
   const [files, setFiles] = useState<File[]>([]);
@@ -155,6 +154,7 @@ export function AiEmailComposer({
       setRequiresRecipientSelection(false);
       setCandidates([]);
       setSelectedReportId(null);
+      setSelectedReportTitle(null);
       setFiles([]);
     } catch (err) {
       const msg =
@@ -226,17 +226,19 @@ export function AiEmailComposer({
             <span className="font-sans text-body-sm font-medium text-navy">{recipient.name}</span>
             <span className="font-sans text-caption text-helper-text">{recipient.email}</span>
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              setRecipient(null);
-              setRequiresRecipientSelection(false);
-            }}
-            className="ml-auto text-helper-text transition-colors hover:text-navy"
-            aria-label="Đổi người nhận"
-          >
-            <X size={15} />
-          </button>
+          <Tooltip label="Đổi người nhận" side="top">
+            <button
+              type="button"
+              onClick={() => {
+                setRecipient(null);
+                setRequiresRecipientSelection(false);
+              }}
+              className="ml-auto text-helper-text transition-colors hover:text-navy"
+              aria-label="Đổi người nhận"
+            >
+              <X size={15} />
+            </button>
+          </Tooltip>
         </div>
       ) : null}
 
@@ -266,12 +268,81 @@ export function AiEmailComposer({
             placeholder="Nội dung email..."
           />
 
-          {/* ── Step 4: Report picker ─────────────────────────────────── */}
-          {reports.length > 0 && (
-            <ReportSelector
-              reports={reports}
-              selectedId={selectedReportId}
-              onSelect={setSelectedReportId}
+          {/* ── Step 4: Report attach popup ───────────────────────────── */}
+          <div className="flex flex-col gap-xs">
+            <label className="font-sans text-body-sm font-medium text-navy">
+              Đính kèm báo cáo (tuỳ chọn)
+            </label>
+
+            {/* Selected report chip */}
+            {selectedReportId && selectedReportTitle ? (
+              <div className="flex items-center gap-xs">
+                <span
+                  className={cn(
+                    'flex items-center gap-xs rounded px-sm py-xs',
+                    'border border-navy bg-navy font-sans text-caption text-white',
+                  )}
+                >
+                  <LinkIcon size={13} />
+                  <span className="max-w-[260px] truncate">{selectedReportTitle}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedReportId(null);
+                      setSelectedReportTitle(null);
+                    }}
+                    className="ml-xs opacity-70 hover:opacity-100 transition-opacity"
+                    aria-label="Bỏ chọn báo cáo"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              </div>
+            ) : null}
+
+            {/* Trigger button */}
+            <div>
+              {recipient ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setReportPopupOpen(true)}
+                  className="h-7 px-sm py-0 text-[12px] gap-[4px]"
+                >
+                  <LinkIcon size={12} />
+                  {selectedReportId ? 'Đổi báo cáo' : 'Đính kèm báo cáo'}
+                </Button>
+              ) : (
+                <Tooltip label="Chọn người nhận trước" side="top">
+                  <span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled
+                      className="h-7 px-sm py-0 text-[12px] gap-[4px] cursor-not-allowed"
+                    >
+                      <LinkIcon size={12} />
+                      Đính kèm báo cáo
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+
+          {/* Popup */}
+          {recipient && (
+            <ReportAttachPopup
+              open={reportPopupOpen}
+              onOpenChange={setReportPopupOpen}
+              recipientUserId={recipient.id}
+              selectedReportId={selectedReportId}
+              onSelect={(r) => {
+                setSelectedReportId(r.id);
+                setSelectedReportTitle(r.title);
+              }}
             />
           )}
 

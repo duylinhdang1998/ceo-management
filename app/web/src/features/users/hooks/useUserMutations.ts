@@ -9,7 +9,7 @@ export interface CreateUserPayload {
   name: string;
   email: string;
   phone?: string;
-  tempPassword: string;
+  password: string;
 }
 
 export interface UpdateUserPayload {
@@ -22,7 +22,6 @@ export interface UpdateUserPayload {
 
 export interface ResetPasswordPayload {
   id: string;
-  newPassword: string;
 }
 
 type UserApiError = AxiosError<{ error?: { message?: string }; message?: string }>;
@@ -70,14 +69,15 @@ export function useDeleteUser() {
 }
 
 // ── useResetPassword ──────────────────────────────────────────────────────
+// Backend resets to fixed default (Nhanvien@123). No password arg needed.
 
 export function useResetPassword() {
   const qc = useQueryClient();
 
   return useMutation<ApiResponse<null>, UserApiError, ResetPasswordPayload>({
-    mutationFn: ({ id, newPassword }) =>
+    mutationFn: ({ id }) =>
       apiClient
-        .post<ApiResponse<null>>(`/api/users/${id}/reset-password`, { newPassword })
+        .post<ApiResponse<null>>(`/api/users/${id}/reset-password`, {})
         .then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });

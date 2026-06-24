@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import { Paperclip, X, File as FileIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
+import { Tooltip } from '@/shared/ui/Tooltip';
 
 // ── AttachmentPicker ──────────────────────────────────────────────────────
 // File input styled like Gmail attach button.
@@ -61,10 +62,20 @@ export function AttachmentPicker({ files, onChange, accept }: AttachmentPickerPr
       />
 
       {/* Trigger button */}
-      <Button type="button" variant="secondary" size="sm" onClick={handleClick}>
-        <Paperclip size={14} />
-        Đính kèm file
-      </Button>
+      <div className="flex items-center">
+        <Tooltip label="Đính kèm file" side="top">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleClick}
+            className="h-7 px-sm py-0 text-[12px] gap-[4px]"
+          >
+            <Paperclip size={12} />
+            Đính kèm file
+          </Button>
+        </Tooltip>
+      </div>
 
       {/* Attached files list */}
       {files.length > 0 && (
@@ -81,14 +92,16 @@ export function AttachmentPicker({ files, onChange, accept }: AttachmentPickerPr
               <span className="shrink-0 font-sans text-[11px] text-helper-text">
                 {formatBytes(file.size)}
               </span>
-              <button
-                type="button"
-                onClick={() => handleRemove(index)}
-                className="shrink-0 text-helper-text transition-colors hover:text-error"
-                aria-label={`Xóa file ${file.name}`}
-              >
-                <X size={14} />
-              </button>
+              <Tooltip label={`Xoá file ${file.name}`} side="top">
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  className="shrink-0 text-helper-text transition-colors hover:text-error"
+                  aria-label={`Xoá file ${file.name}`}
+                >
+                  <X size={14} />
+                </button>
+              </Tooltip>
             </li>
           ))}
         </ul>

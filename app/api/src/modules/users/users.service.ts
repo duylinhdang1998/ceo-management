@@ -7,9 +7,9 @@ import * as bcrypt from 'bcryptjs';
 import { UsersRepository, UserPublic } from './users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
 
 const BCRYPT_ROUNDS = 12;
+const DEFAULT_EMPLOYEE_PASSWORD = 'Nhanvien@123';
 
 @Injectable()
 export class UsersService {
@@ -77,16 +77,16 @@ export class UsersService {
     return updated;
   }
 
-  async resetPassword(id: string, dto: ResetPasswordDto): Promise<{ message: string }> {
+  async resetPassword(id: string): Promise<{ message: string; tempPassword: string }> {
     const existing = await this.repo.findById(id);
     if (!existing) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Không tìm thấy nhân viên' });
     }
 
-    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(DEFAULT_EMPLOYEE_PASSWORD, BCRYPT_ROUNDS);
     await this.repo.resetPassword(id, passwordHash);
 
-    return { message: 'Đã reset mật khẩu' };
+    return { message: 'Đã đặt lại mật khẩu về mặc định', tempPassword: DEFAULT_EMPLOYEE_PASSWORD };
   }
 
   async softDelete(id: string): Promise<{ message: string }> {

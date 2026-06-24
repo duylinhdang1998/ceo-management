@@ -64,6 +64,7 @@ export function LoginForm() {
       {/* Email field */}
       <Input
         label="Email"
+        required
         type="email"
         placeholder="ceo@company.com"
         autoComplete="email"
@@ -77,6 +78,7 @@ export function LoginForm() {
       {/* Password field */}
       <Input
         label="Mật khẩu"
+        required
         type={showPassword ? 'text' : 'password'}
         placeholder="••••••••"
         autoComplete="current-password"

@@ -75,7 +75,7 @@ export class EmailController {
    */
   @Post('compose')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ email: { limit: EMAIL_THROTTLE_LIMIT, ttl: 60000 } })
+  @Throttle({ default: { limit: EMAIL_THROTTLE_LIMIT, ttl: 60000 } })
   async compose(
     @Body() dto: ComposeEmailDto,
   ): Promise<{
@@ -191,7 +191,7 @@ export class EmailController {
   @Post('send')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FilesInterceptor('files', 10))
-  @Throttle({ email: { limit: EMAIL_THROTTLE_LIMIT, ttl: 60000 } })
+  @Throttle({ default: { limit: EMAIL_THROTTLE_LIMIT, ttl: 60000 } })
   async send(
     @CurrentUser() currentUser: JwtPayload,
     @Body() dto: SendEmailDto,

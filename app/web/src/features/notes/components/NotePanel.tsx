@@ -20,6 +20,8 @@ import { AdminThreadsView } from './AdminThreadsView';
 // Reply nesting cap: depth 0 = root note, depth 1 = reply.
 // The Reply button is hidden on depth=1 items (NoteItem enforces this).
 // The API also returns 400 for level-3 attempts — UI and API both defend.
+//
+// Layout: comments list at top, new-note composer pinned at bottom (FB-style).
 
 export interface NotePanelProps {
   reportId: string;
@@ -77,14 +79,17 @@ export function NotePanel({
         <h2 className="font-heading text-h4 text-navy">Ghi chú</h2>
       </div>
 
-      {/* Loading state */}
+      {/* Loading state — skeleton bubbles (no border, rounded) */}
       {isLoading && (
-        <div className="flex flex-col gap-sm">
+        <div className="flex flex-col gap-[16px]">
           {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded border border-nav-border bg-ghost-hover"
-            />
+            <div key={i} className="flex items-start gap-sm">
+              <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-ghost-hover" />
+              <div className="flex-1 space-y-[6px]">
+                <div className="h-[60px] animate-pulse rounded-2xl bg-ghost-hover" />
+                <div className="h-[16px] w-24 animate-pulse rounded bg-ghost-hover" />
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -104,25 +109,25 @@ export function NotePanel({
         />
       )}
 
-      {/* Employee view: own thread + root note form */}
+      {/* Employee view: own thread list */}
       {!isLoading && !isError && !isAdmin && (
-        <>
-          <EmployeeThreadView
-            notes={notes}
-            noteItemSharedProps={noteItemSharedProps}
-          />
+        <EmployeeThreadView
+          notes={notes}
+          noteItemSharedProps={noteItemSharedProps}
+        />
+      )}
 
-          {/* Root note form — employees only (CEO_MUST_REPLY enforced by API) */}
-          <div className="border-t border-nav-border pt-md">
-            <p className="mb-sm font-sans text-caption text-helper-text">
-              Thêm ghi chú của bạn
-            </p>
-            <NoteForm
-              placeholder="Viết ghi chú mới…"
-              onSubmit={handleCreateRoot}
-            />
-          </div>
-        </>
+      {/* Root note composer — BOTTOM of panel, employees only (FB "Comment as..." style) */}
+      {!isLoading && !isError && !isAdmin && (
+        <div className="border-t border-nav-border pt-md">
+          <p className="mb-sm font-sans text-caption font-medium text-helper-text">
+            Thêm ghi chú của bạn
+          </p>
+          <NoteForm
+            placeholder="Viết ghi chú mới…"
+            onSubmit={handleCreateRoot}
+          />
+        </div>
       )}
     </section>
   );

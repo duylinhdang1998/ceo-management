@@ -5,12 +5,14 @@ import { cn } from '@/shared/lib/cn';
 
 // ── NoteForm ───────────────────────────────────────────────────────────────
 // Reusable textarea form for creating a new root note or a reply.
+// Styled as a Facebook-like rounded composer: subtle gray background,
+// rounded-full pill input with no harsh border in rest state.
 // One component per file — no sibling exports.
 
 export interface NoteFormProps {
-  /** Label shown above the textarea */
+  /** Placeholder text inside the textarea */
   placeholder?: string;
-  /** Preset text (e.g. for future edit mode) */
+  /** Preset text (for edit mode) */
   defaultValue?: string;
   /** Called with the trimmed content on submit */
   onSubmit: (content: string) => Promise<void> | void;
@@ -40,7 +42,6 @@ export function NoteForm({
     formState: { isSubmitting, errors },
   } = useForm<FormValues>({ defaultValues: { content: defaultValue } });
 
-  // Keep a stable ref to the textarea for auto-focus on mount
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { ref: rhfRef, ...registerRest } = register('content', {
@@ -64,18 +65,21 @@ export function NoteForm({
         placeholder={placeholder}
         rows={compact ? 2 : 3}
         className={cn(
-          'w-full resize-none rounded border border-nav-border bg-surface',
-          'px-md py-sm font-sans text-body-sm text-navy',
+          // Rounded bubble-style composer — light gray bg, no border at rest
+          'w-full resize-none rounded-2xl bg-ghost-hover',
+          'px-[12px] py-[8px] font-sans text-body-sm text-navy',
           'placeholder:text-helper-text',
-          'hover:border-navy',
-          'focus:outline-none focus:border-2 focus:border-navy focus:shadow-focus',
+          // Subtle border appears on hover/focus
+          'border border-transparent',
+          'hover:border-nav-border',
+          'focus:outline-none focus:border-navy focus:border focus:shadow-focus',
           'transition-all duration-150',
-          errors.content && 'border-2 border-error shadow-focus-error',
+          errors.content && 'border border-error shadow-focus-error',
         )}
       />
 
       {errors.content && (
-        <p className="font-sans text-caption text-error">
+        <p className="font-sans text-caption text-error pl-xs">
           {errors.content.message}
         </p>
       )}

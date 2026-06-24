@@ -1,25 +1,16 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, FileText, Users, Key, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { PageLayout } from '@/shared/ui/PageLayout';
 import { Button } from '@/shared/ui/Button';
 import { ToastContainer } from '@/shared/ui/Toast';
 import type { ToastItem } from '@/shared/ui/Toast';
-import type { SidebarNavItem } from '@/shared/ui/Sidebar';
 import { useAuthStore, selectUser } from '@/shared/stores/authStore';
 import type { User } from '@/shared/types';
 import { PortalLogo } from '@/shared/ui/PortalLogo';
 import { UserList } from '@/features/users/components/UserList';
 import { UserForm } from '@/features/users/components/UserForm';
-import { ResetPasswordModal } from '@/features/users/components/ResetPasswordModal';
-
-// ── Nav items (super_admin only page) ─────────────────────────────────────
-
-const CEO_NAV: SidebarNavItem[] = [
-  { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
-  { to: '/reports', label: 'Quản lý báo cáo', icon: <FileText size={18} /> },
-  { to: '/users', label: 'Quản lý nhân viên', icon: <Users size={18} /> },
-  { to: '/tokens', label: 'API Tokens', icon: <Key size={18} /> },
-];
+import { ConfirmResetModal } from '@/features/users/components/ConfirmResetModal';
+import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
 // ── UsersPage ─────────────────────────────────────────────────────────────
 // Route: /users (super_admin only — enforced by RoleGuard in routes.tsx)
@@ -68,8 +59,11 @@ export default function UsersPage() {
   };
 
   const handleResetClose = () => {
+    const userName = resetUser?.name;
     setResetUser(null);
-    showToast('Đã reset mật khẩu', 'success');
+    if (userName) {
+      showToast(`Đã đặt lại mật khẩu của ${userName} về Nhanvien@123`, 'success');
+    }
   };
 
   const sidebarFooter = (
@@ -90,7 +84,7 @@ export default function UsersPage() {
   return (
     <>
       <PageLayout
-        navItems={CEO_NAV}
+        navItems={CEO_NAV_ITEMS}
         logo={<PortalLogo />}
         sidebarFooter={sidebarFooter}
         topbarTitle="Quản lý nhân viên"
@@ -116,8 +110,8 @@ export default function UsersPage() {
         user={editingUser}
       />
 
-      {/* Reset password modal */}
-      <ResetPasswordModal
+      {/* Reset password confirm modal */}
+      <ConfirmResetModal
         isOpen={resetUser !== null}
         onClose={handleResetClose}
         user={resetUser}

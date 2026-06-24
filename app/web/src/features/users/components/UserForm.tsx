@@ -35,23 +35,10 @@ type FormValues = z.infer<typeof formSchema>;
 
 // Runtime-refined schemas per mode — zod validates tempPassword only on create.
 const createSchema = formSchema.superRefine((data, ctx) => {
-  if (!data.tempPassword || data.tempPassword.length < 6) {
+  if (!data.tempPassword || data.tempPassword.trim().length === 0) {
     ctx.addIssue({
-      code: z.ZodIssueCode.too_small,
-      minimum: 6,
-      type: 'string',
-      inclusive: true,
-      message: 'Mật khẩu tối thiểu 6 ký tự',
-      path: ['tempPassword'],
-    });
-  }
-  if (data.tempPassword && data.tempPassword.length > 100) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.too_big,
-      maximum: 100,
-      type: 'string',
-      inclusive: true,
-      message: 'Mật khẩu quá dài',
+      code: z.ZodIssueCode.custom,
+      message: 'Vui lòng nhập mật khẩu tạm',
       path: ['tempPassword'],
     });
   }
@@ -126,7 +113,7 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
           name: values.name,
           email: values.email,
           phone: values.phone || undefined,
-          tempPassword: values.tempPassword ?? '',
+          password: values.tempPassword ?? '',
         },
         { onSuccess: onClose },
       );
@@ -172,6 +159,7 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
 
         <Input
           label="Tên nhân viên"
+          required
           placeholder="Nguyễn Văn An"
           {...register('name')}
           isError={Boolean(errors.name)}
@@ -180,6 +168,7 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
 
         <Input
           label="Email"
+          required
           type="email"
           placeholder="van.an@company.com"
           {...register('email')}
@@ -199,7 +188,8 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
           <Input
             label="Mật khẩu tạm"
             type="password"
-            placeholder="Tối thiểu 6 ký tự"
+            required
+            placeholder="Nhập mật khẩu tạm"
             {...register('tempPassword')}
             isError={Boolean(errors.tempPassword)}
             errorText={errors.tempPassword?.message}

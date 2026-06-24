@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { UserX } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
+import { Tooltip } from '@/shared/ui/Tooltip';
 import type { User } from '@/shared/types';
 import { AssigneePicker } from './AssigneePicker';
 import {
@@ -136,16 +137,18 @@ export function AssignmentPanel({ reportId, reportDetail }: AssignmentPanelProps
           {currentAssignees.map((user: User) => (
             <div key={user.id} className="flex items-center gap-[4px]">
               <Chip variant="filter">{user.name}</Chip>
-              <button
-                type="button"
-                title={`Bỏ gán ${user.name}`}
-                className="rounded p-[2px] text-helper-text hover:text-error transition-colors"
-                onClick={() =>
-                  setSelectedIds((prev) => prev.filter((id) => id !== user.id))
-                }
-              >
-                <UserX size={12} />
-              </button>
+              <Tooltip label={`Bỏ gán ${user.name}`} side="top">
+                <button
+                  type="button"
+                  aria-label={`Bỏ gán ${user.name}`}
+                  className="rounded p-[2px] text-helper-text hover:text-error transition-colors"
+                  onClick={() =>
+                    setSelectedIds((prev) => prev.filter((id) => id !== user.id))
+                  }
+                >
+                  <UserX size={12} />
+                </button>
+              </Tooltip>
             </div>
           ))}
         </div>

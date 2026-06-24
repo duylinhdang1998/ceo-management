@@ -21,7 +21,7 @@ import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Pool } from 'pg';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../src/app.module';
 import { getPool } from '../src/common/db/pool';
 
@@ -198,7 +198,7 @@ describe('Feature: Tạo nhân viên (US-C1)', () => {
         [data.id],
       );
       const hash = dbRes.rows[0].password_hash;
-      expect(hash).toMatch(/^\$2b\$/);
+      expect(hash).toMatch(/^\$2[ab]\$/);
       expect(hash).not.toBe('TempPass@2026');
 
       // Cleanup
@@ -315,22 +315,37 @@ describe('Feature: Sửa nhân viên, reset pw, activate/deactivate (US-C2)', ()
     });
   });
 
-  describe('Scenario: CEO reset mật khẩu — must_change_password = true', () => {
-    it('should return 200; DB has must_change_password=true and new password_hash', async () => {
-      const res = await request(app.getHttpServer())
+  describe('Scenario: CEO reset mật khẩu — luôn về mặc định Nhanvien@123, must_change_password = true', () => {
+    it('should return 200 with tempPassword; DB has must_change_password=true and default password hash; login with default succeeds and mustChangePassword=true', async () => {
+      const DEFAULT_PASSWORD = 'Nhanvien@123';
+
+      // Reset — no body needed
+      const resetRes = await request(app.getHttpServer())
         .post(`/api/users/${employeeAId}/reset-password`)
-        .set('Authorization', `Bearer ${ceoToken}`)
-        .send({ newPassword: 'NewTemp@2026' });
+        .set('Authorization', `Bearer ${ceoToken}`);
 
-      expect(res.status).toBe(200);
+      expect(resetRes.status).toBe(200);
+      const resetData = resetRes.body.data ?? resetRes.body;
+      expect(resetData.message).toBe('Đã đặt lại mật khẩu về mặc định');
+      expect(resetData.tempPassword).toBe(DEFAULT_PASSWORD);
 
+      // DB: must_change_password=true and hash matches default
       const dbRes = await pool.query<{ must_change_password: boolean; password_hash: string }>(
         `SELECT must_change_password, password_hash FROM users WHERE id = $1`,
         [employeeAId],
       );
       expect(dbRes.rows[0].must_change_password).toBe(true);
-      const hashValid = await bcrypt.compare('NewTemp@2026', dbRes.rows[0].password_hash);
+      const hashValid = await bcrypt.compare(DEFAULT_PASSWORD, dbRes.rows[0].password_hash);
       expect(hashValid).toBe(true);
+
+      // Login with default password succeeds and mustChangePassword=true in response
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: EMP_A_EMAIL, password: DEFAULT_PASSWORD });
+
+      expect(loginRes.status).toBe(200);
+      const loginData = loginRes.body.data ?? loginRes.body;
+      expect(loginData.mustChangePassword).toBe(true);
     });
   });
 
@@ -424,8 +439,7 @@ describe('Feature: Sửa nhân viên, reset pw, activate/deactivate (US-C2)', ()
     it('should return 403 for employee calling reset-password', async () => {
       const res = await request(app.getHttpServer())
         .post(`/api/users/${employeeAId}/reset-password`)
-        .set('Authorization', `Bearer ${employeeAToken}`)
-        .send({ newPassword: 'HackPass@2026' });
+        .set('Authorization', `Bearer ${employeeAToken}`);
 
       expect(res.status).toBe(403);
     });

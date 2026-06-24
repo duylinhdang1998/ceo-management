@@ -15,13 +15,19 @@ export interface ReportListResponse {
 
 // ── useReports — paginated list ─────────────────────────────────────────────
 export function useReports(params: ReportListParams = {}) {
-  const { page = 1, limit = 20, search = '' } = params;
+  const { page = 1, limit = 15, search = '', createdFrom, createdTo } = params;
 
   return useQuery<ReportListResponse>({
-    queryKey: queryKeys.reports.list({ page, limit, search }),
+    queryKey: queryKeys.reports.list({ page, limit, search, createdFrom, createdTo }),
     queryFn: async () => {
       const res = await apiClient.get<ReportListResponse>('/api/reports', {
-        params: { page, limit, ...(search ? { search } : {}) },
+        params: {
+          page,
+          limit,
+          ...(search ? { search } : {}),
+          ...(createdFrom ? { createdFrom } : {}),
+          ...(createdTo ? { createdTo } : {}),
+        },
       });
       return res.data;
     },

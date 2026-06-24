@@ -18,6 +18,7 @@ const INVALID_CREDENTIALS_MSG = 'Email hoặc mật khẩu không đúng';
 
 interface UserRow {
   id: string;
+  name: string;
   email: string;
   password_hash: string;
   role: string;
@@ -38,10 +39,17 @@ export class AuthService {
     accessToken: string;
     mustChangePassword: boolean;
     role: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      mustChangePassword: boolean;
+    };
   }> {
     // Case-insensitive email lookup
     const result = await this.pool.query<UserRow>(
-      `SELECT id, email, password_hash, role, is_active, must_change_password
+      `SELECT id, name, email, password_hash, role, is_active, must_change_password
        FROM users
        WHERE lower(email) = lower($1)
          AND deleted_at IS NULL`,
@@ -83,6 +91,13 @@ export class AuthService {
       accessToken,
       mustChangePassword: user.must_change_password,
       role: user.role,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.must_change_password,
+      },
     };
   }
 

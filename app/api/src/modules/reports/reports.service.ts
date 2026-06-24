@@ -13,9 +13,9 @@ import { UpdateReportDto } from './dto/update-report.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import * as crypto from 'crypto';
 
-/** Max file size for HTML uploads (default 5 MB). Configurable via env. */
+/** Max file size for HTML uploads (default 70 MB). Configurable via env. */
 const MAX_HTML_BYTES =
-  parseInt(process.env.REPORT_MAX_SIZE_BYTES ?? '0', 10) || 5 * 1024 * 1024;
+  parseInt(process.env.REPORT_MAX_SIZE_BYTES ?? '0', 10) || 70 * 1024 * 1024;
 
 export interface ReportDto {
   id: string;
@@ -27,6 +27,8 @@ export interface ReportDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Number of employees assigned to this report (0 when none). */
+  assigneeCount: number;
 }
 
 function toDto(row: ReportRow): ReportDto {
@@ -40,6 +42,9 @@ function toDto(row: ReportRow): ReportDto {
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
+    // assignee_count comes from the LEFT JOIN COUNT in repository queries;
+    // default to 0 for mutations (create/update) that return bare ReportRow without the join.
+    assigneeCount: row.assignee_count ?? 0,
   };
 }
 
@@ -113,11 +118,12 @@ export class ReportsService {
     await this.s3.putHtml(s3Key, htmlBuf.toString('utf8'));
 
     // Insert DB row with the real s3_key from the start.
+    // status is always 'published' — client cannot override on create.
     const report = await this.reportsRepo.createWithId({
       id: reportId,
       title: dto.title,
       description: dto.description,
-      status: dto.status ?? 'draft',
+      status: 'published',
       s3Key,
       sizeBytes: htmlBuf.length,
       createdBy: userId,
@@ -188,6 +194,16 @@ export class ReportsService {
   }
 
   // ---------------------------------------------------------------------------
+  // BULK DELETE (soft) — super_admin only
+  // ---------------------------------------------------------------------------
+
+  async bulkRemove(ids: string[]): Promise<{ deleted: number }> {
+    const deleted = await this.reportsRepo.softDeleteBulk(ids);
+    this.logger.log(`Reports bulk soft-deleted count=${deleted} ids=[${ids.join(',')}]`);
+    return { deleted };
+  }
+
+  // ---------------------------------------------------------------------------
   // LIST — employees see only assigned + published + not-deleted reports
   //
   // Delegates to AssignmentsService.getAssignedReportIds() which already applies
@@ -204,6 +220,8 @@ export class ReportsService {
   ): Promise<{ data: ReportDto[]; total: number; page: number; limit: number }> {
     let reportIds: string[] | undefined;
     let publishedOnly = false;
+    // assignedTo is only honoured for super_admin — employees have their own scope
+    const assignedTo = role === 'super_admin' ? pagination.assignedTo : undefined;
 
     if (role === 'employee') {
       // AssignmentsService.getAssignedReportIds already filters published + not-deleted.
@@ -217,6 +235,9 @@ export class ReportsService {
       limit: pagination.limit,
       reportIds,
       publishedOnly,
+      createdFrom: pagination.createdFrom,
+      createdTo: pagination.createdTo,
+      assignedTo,
     });
 
     return {

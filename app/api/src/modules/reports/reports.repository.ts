@@ -13,6 +13,8 @@ export interface ReportRow {
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
+  /** Number of employees assigned to this report. Present on list/findById results. */
+  assignee_count?: number;
 }
 
 export interface CreateReportData {
@@ -43,6 +45,15 @@ export interface ListReportsOptions {
   reportIds?: string[];
   /** When set, also filter by status = 'published' (employee scope) */
   publishedOnly?: boolean;
+  /** ISO-8601 date string — include reports with created_at >= this value (inclusive) */
+  createdFrom?: string;
+  /** ISO-8601 date string — include reports with created_at <= this value (inclusive, end of day) */
+  createdTo?: string;
+  /**
+   * UUID of an employee — when set, return only reports assigned to that user
+   * (JOIN report_assignments WHERE user_id = assignedTo). Super_admin only.
+   */
+  assignedTo?: string;
 }
 
 @Injectable()
@@ -78,7 +89,12 @@ export class ReportsRepository {
 
   async findById(id: string): Promise<ReportRow | null> {
     const result = await this.pool.query<ReportRow>(
-      `SELECT * FROM reports WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT r.*,
+              COUNT(ra.user_id)::int AS assignee_count
+       FROM reports r
+       LEFT JOIN report_assignments ra ON ra.report_id = r.id
+       WHERE r.id = $1 AND r.deleted_at IS NULL
+       GROUP BY r.id`,
       [id],
     );
     return result.rows[0] ?? null;
@@ -139,10 +155,27 @@ export class ReportsRepository {
     return result.rows[0] ?? null;
   }
 
+  /**
+   * Bulk soft-delete: sets deleted_at = now() for all given ids that are
+   * not already deleted. Uses a single parameterized UPDATE ... WHERE id = ANY($1::uuid[]).
+   *
+   * Returns the number of rows actually updated (already-deleted ids are skipped
+   * by the `deleted_at IS NULL` guard and do not count).
+   */
+  async softDeleteBulk(ids: string[]): Promise<number> {
+    const result = await this.pool.query<ReportRow>(
+      `UPDATE reports SET deleted_at = now(), updated_at = now()
+       WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL
+       RETURNING id`,
+      [ids],
+    );
+    return result.rowCount ?? 0;
+  }
+
   async list(
     opts: ListReportsOptions,
   ): Promise<{ rows: ReportRow[]; total: number }> {
-    const { search, page, limit, reportIds, publishedOnly } = opts;
+    const { search, page, limit, reportIds, publishedOnly, createdFrom, createdTo, assignedTo } = opts;
     const offset = (page - 1) * limit;
 
     const conditions: string[] = ['r.deleted_at IS NULL'];
@@ -168,17 +201,46 @@ export class ReportsRepository {
       conditions.push(`r.status = 'published'`);
     }
 
+    if (createdFrom) {
+      conditions.push(`r.created_at >= $${idx++}`);
+      params.push(createdFrom);
+    }
+
+    if (createdTo) {
+      // Treat createdTo as end-of-day inclusive: add 1 day and use <
+      conditions.push(`r.created_at < ($${idx++}::timestamptz + INTERVAL '1 day')`);
+      params.push(createdTo);
+    }
+
+    // assignedTo: filter to reports assigned to a specific employee (super_admin popup use case).
+    // We JOIN report_assignments for filtering; the COUNT join below is a separate LEFT JOIN alias.
+    let assignedToJoin = '';
+    if (assignedTo) {
+      assignedToJoin = `JOIN report_assignments ra_filter ON ra_filter.report_id = r.id AND ra_filter.user_id = $${idx++}`;
+      params.push(assignedTo);
+    }
+
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+    // COUNT query — uses the same conditions; assignedTo JOIN already restricts the set
     const countResult = await this.pool.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM reports r ${where}`,
+      `SELECT COUNT(*) as count
+       FROM reports r
+       ${assignedToJoin}
+       ${where}`,
       params,
     );
     const total = parseInt(countResult.rows[0].count, 10);
 
     const dataParams = [...params, limit, offset];
     const dataResult = await this.pool.query<ReportRow>(
-      `SELECT r.* FROM reports r ${where}
+      `SELECT r.*,
+              COUNT(ra_count.user_id)::int AS assignee_count
+       FROM reports r
+       ${assignedToJoin}
+       LEFT JOIN report_assignments ra_count ON ra_count.report_id = r.id
+       ${where}
+       GROUP BY r.id
        ORDER BY r.created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
       dataParams,

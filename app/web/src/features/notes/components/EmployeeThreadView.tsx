@@ -26,7 +26,7 @@ export function EmployeeThreadView({
   }
 
   return (
-    <div className="flex flex-col gap-md">
+    <div className="flex flex-col gap-[16px]">
       {rootNotes.map((note) => (
         <NoteItem key={note.id} note={note} depth={0} {...noteItemSharedProps} />
       ))}

@@ -2,13 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/api-client';
 import { queryKeys } from '@/shared/lib/query-keys';
 import type { ApiResponse } from '@/shared/types';
-import type { Report, ReportStatus } from './useReports';
+import type { Report } from './useReports';
 
-// ── Create payload ─────────────────────────────────────────────────────────
+// ── Create payload — NO status (backend sets published by default) ─────────
 export interface CreateReportPayload {
   title: string;
   description?: string;
-  status: ReportStatus;
   file?: File; // .html file — multipart
 }
 
@@ -17,16 +16,15 @@ export interface UpdateReportPayload {
   id: string;
   title?: string;
   description?: string;
-  status?: ReportStatus;
+  status?: 'draft' | 'published';
   file?: File; // optional new .html file
 }
 
-// ── Build FormData for multipart upload ────────────────────────────────────
-function buildFormData(payload: Omit<CreateReportPayload, 'id'>): FormData {
+// ── Build FormData for multipart upload (create) ───────────────────────────
+function buildCreateFormData(payload: CreateReportPayload): FormData {
   const form = new FormData();
   form.append('title', payload.title);
   if (payload.description) form.append('description', payload.description);
-  form.append('status', payload.status);
   if (payload.file) form.append('file', payload.file);
   return form;
 }
@@ -37,7 +35,7 @@ export function useCreateReport() {
 
   return useMutation<Report, Error, CreateReportPayload>({
     mutationFn: async (payload) => {
-      const form = buildFormData(payload);
+      const form = buildCreateFormData(payload);
       const res = await apiClient.post<ApiResponse<Report>>('/api/reports', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -60,7 +58,7 @@ export function useUpdateReport() {
         // Multipart when a new file is included
         const form = new FormData();
         if (payload.title) form.append('title', payload.title);
-        if (payload.description) form.append('description', payload.description);
+        if (payload.description !== undefined) form.append('description', payload.description);
         if (payload.status) form.append('status', payload.status);
         form.append('file', payload.file);
         res = await apiClient.put<ApiResponse<Report>>(`/api/reports/${id}`, form, {
@@ -68,7 +66,8 @@ export function useUpdateReport() {
         });
       } else {
         // JSON when only metadata changes
-        res = await apiClient.put<ApiResponse<Report>>(`/api/reports/${id}`, payload);
+        const { file: _file, ...metaPayload } = payload;
+        res = await apiClient.put<ApiResponse<Report>>(`/api/reports/${id}`, metaPayload);
       }
       return res.data.data;
     },
@@ -80,6 +79,26 @@ export function useUpdateReport() {
   });
 }
 
+// ── useReplaceAssignments — PUT /api/reports/:id/assignments ───────────────
+export interface ReplaceAssignmentsPayload {
+  reportId: string;
+  userIds: string[];
+}
+
+export function useReplaceAssignments() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, ReplaceAssignmentsPayload>({
+    mutationFn: async ({ reportId, userIds }) => {
+      await apiClient.put(`/api/reports/${reportId}/assignments`, { userIds });
+    },
+    onSuccess: (_data, { reportId }) => {
+      void queryClient.invalidateQueries({ queryKey: ['report-assignees', reportId] });
+      void queryClient.invalidateQueries({ queryKey: ['report', reportId] });
+    },
+  });
+}
+
 // ── useDeleteReport ────────────────────────────────────────────────────────
 export function useDeleteReport() {
   const queryClient = useQueryClient();
@@ -87,6 +106,32 @@ export function useDeleteReport() {
   return useMutation<void, Error, string>({
     mutationFn: async (id) => {
       await apiClient.delete(`/api/reports/${id}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reports.all() });
+    },
+  });
+}
+
+// ── useBulkDeleteReports ───────────────────────────────────────────────────
+export interface BulkDeleteReportsPayload {
+  ids: string[];
+}
+
+export interface BulkDeleteReportsResult {
+  deleted: number;
+}
+
+export function useBulkDeleteReports() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BulkDeleteReportsResult, Error, BulkDeleteReportsPayload>({
+    mutationFn: async (payload) => {
+      const res = await apiClient.post<ApiResponse<BulkDeleteReportsResult>>(
+        '/api/reports/bulk-delete',
+        payload,
+      );
+      return res.data.data;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.reports.all() });

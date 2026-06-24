@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -11,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { AssignmentsService } from './assignments.service';
 import { AssignUsersDto } from './dto/assign-users.dto';
+import { ReplaceAssigneesDto } from './dto/replace-assignees.dto';
 import { JwtGuard } from '../../common/auth/jwt.guard';
 import { RolesGuard } from '../../common/auth/roles.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -51,8 +53,25 @@ export class AssignmentsController {
   }
 
   /**
+   * PUT /api/reports/:reportId/assignments
+   * Replace the full assignee set atomically — super_admin only, idempotent.
+   * Body: { userIds: string[] } — empty array clears all assignments.
+   */
+  @Put()
+  @Roles('super_admin')
+  @HttpCode(HttpStatus.OK)
+  async replaceAssignees(
+    @Param('reportId') reportId: string,
+    @Body() dto: ReplaceAssigneesDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.assignmentsService.replaceAssignees(reportId, dto, user.sub);
+  }
+
+  /**
    * GET /api/reports/:reportId/assignments
    * List all assignees for a report — super_admin only.
+   * Returns current assignee user IDs and basic user info for pre-checking popup boxes.
    */
   @Get()
   @Roles('super_admin')

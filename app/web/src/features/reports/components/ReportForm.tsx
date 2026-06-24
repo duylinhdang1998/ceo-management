@@ -1,65 +1,117 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { FileText, Upload, X } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Select } from '@/shared/ui/Select';
 import type { Report } from '../hooks/useReports';
-import type { CreateReportPayload, UpdateReportPayload } from '../hooks/useReportMutations';
+import type { UpdateReportPayload } from '../hooks/useReportMutations';
 
-// ── Validation schema ──────────────────────────────────────────────────────
-const reportSchema = z.object({
+// ── Constants ──────────────────────────────────────────────────────────────
+const MAX_FILE_SIZE_BYTES = 70 * 1024 * 1024;
+const ACCEPTED_EXT = '.html';
+
+// ── Validation schema (edit mode only; create uses ReportUpload) ───────────
+const editSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc').max(200, 'Tiêu đề tối đa 200 ký tự'),
   description: z.string().max(1000, 'Mô tả tối đa 1000 ký tự').optional(),
   status: z.enum(['draft', 'published']),
 });
 
-type ReportFormValues = z.infer<typeof reportSchema>;
+type EditFormValues = z.infer<typeof editSchema>;
 
 // ── Props ──────────────────────────────────────────────────────────────────
 export interface ReportFormProps {
   /** When provided the form is in "edit" mode */
-  report?: Report;
-  onSubmit: (payload: CreateReportPayload | UpdateReportPayload) => void;
+  report: Report;
+  onSubmit: (payload: UpdateReportPayload) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Nháp (Draft)' },
+  { value: 'published', label: 'Đã xuất bản (Published)' },
+];
+
 // ── ReportForm ─────────────────────────────────────────────────────────────
-// Handles metadata-only create/edit. File upload is handled by ReportUpload.
-// Used inside a Modal; parent owns the modal open/close state.
+// Edit mode form. Allows replacing metadata + optionally uploading a new HTML file.
+// Status field shown only in edit mode (create = always published by backend).
 export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportFormProps) {
-  const isEdit = Boolean(report);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<ReportFormValues>({
-    resolver: zodResolver(reportSchema),
+  } = useForm<EditFormValues>({
+    resolver: zodResolver(editSchema),
     defaultValues: {
-      title: report?.title ?? '',
-      description: report?.description ?? '',
-      status: report?.status ?? 'draft',
+      title: report.title,
+      description: report.description ?? '',
+      status: report.status,
     },
   });
 
-  // Sync form when report prop changes (e.g. opening a different report for edit)
+  const statusValue = watch('status');
+
+  // Sync form when report prop changes
   useEffect(() => {
     reset({
-      title: report?.title ?? '',
-      description: report?.description ?? '',
-      status: report?.status ?? 'draft',
+      title: report.title,
+      description: report.description ?? '',
+      status: report.status,
     });
+    setSelectedFile(null);
+    setFileError(null);
   }, [report, reset]);
 
-  const handleFormSubmit = (values: ReportFormValues) => {
-    if (isEdit && report) {
-      onSubmit({ id: report.id, ...values } satisfies UpdateReportPayload);
-    } else {
-      onSubmit(values as CreateReportPayload);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    setSelectedFile(null);
+
+    if (!file) return;
+
+    const isHtmlMime = file.type === 'text/html' || file.type === 'text/html; charset=utf-8';
+    const isHtmlExt = file.name.toLowerCase().endsWith(ACCEPTED_EXT);
+    if (!isHtmlMime && !isHtmlExt) {
+      setFileError('Chỉ chấp nhận file HTML (.html)');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setFileError(`Kích thước file vượt quá 70MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setFileError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFormSubmit = (values: EditFormValues) => {
+    const payload: UpdateReportPayload = {
+      id: report.id,
+      title: values.title,
+      description: values.description,
+      status: values.status,
+    };
+    if (selectedFile) payload.file = selectedFile;
+    onSubmit(payload);
   };
 
   return (
@@ -67,6 +119,7 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
       {/* Title */}
       <Input
         label="Tiêu đề"
+        required
         placeholder="Nhập tiêu đề báo cáo"
         isError={Boolean(errors.title)}
         errorText={errors.title?.message}
@@ -75,9 +128,7 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
 
       {/* Description */}
       <div className="flex flex-col gap-[6px]">
-        <label className="font-sans text-[14px] font-medium text-navy">
-          Mô tả
-        </label>
+        <label className="font-sans text-[14px] font-medium text-navy">Mô tả</label>
         <textarea
           rows={3}
           placeholder="Mô tả ngắn về báo cáo (tuỳ chọn)"
@@ -89,16 +140,68 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
         )}
       </div>
 
-      {/* Status toggle */}
+      {/* Status (edit only) */}
       <div className="flex flex-col gap-[6px]">
         <label className="font-sans text-[14px] font-medium text-navy">Trạng thái</label>
-        <select
-          className="w-full h-[42px] rounded border border-nav-border bg-surface px-[14px] font-sans text-[14px] text-navy hover:border-navy focus:border-2 focus:border-navy focus:outline-none transition-all duration-150 cursor-pointer"
-          {...register('status')}
-        >
-          <option value="draft">Nháp (Draft)</option>
-          <option value="published">Đã xuất bản (Published)</option>
-        </select>
+        <Select
+          value={statusValue}
+          onValueChange={(v) => setValue('status', v as 'draft' | 'published')}
+          options={STATUS_OPTIONS}
+          aria-label="Trạng thái báo cáo"
+        />
+      </div>
+
+      {/* Optional HTML file replacement */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="font-sans text-[14px] font-medium text-navy">
+          Thay thế file HTML{' '}
+          <span className="font-normal text-helper-text text-[12px]">(tuỳ chọn)</span>
+        </label>
+
+        {selectedFile ? (
+          <div className="flex items-center gap-sm rounded border border-nav-border bg-bg px-[14px] py-[10px]">
+            <FileText size={16} className="shrink-0 text-helper-text" />
+            <span className="flex-1 min-w-0 truncate font-sans text-[14px] text-navy">
+              {selectedFile.name}
+            </span>
+            <span className="shrink-0 font-sans text-[12px] text-helper-text">
+              {(selectedFile.size / 1024).toFixed(0)} KB
+            </span>
+            <button
+              type="button"
+              onClick={clearFile}
+              className="shrink-0 text-helper-text hover:text-error transition-colors"
+              aria-label="Xoá file"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-sm rounded border border-dashed border-nav-border bg-bg px-md py-sm hover:border-navy hover:bg-ghost-hover transition-colors cursor-pointer"
+            data-testid="upload-replace-dropzone"
+          >
+            <Upload size={16} className="text-helper-text" />
+            <span className="font-sans text-[14px] text-helper-text">
+              Chọn file HTML để thay thế (≤70MB)
+            </span>
+          </button>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".html,text/html"
+          className="sr-only"
+          onChange={handleFileChange}
+          data-testid="replace-file-input"
+        />
+
+        {fileError && (
+          <p className="font-sans text-[12px] text-error">{fileError}</p>
+        )}
       </div>
 
       {/* Actions */}
@@ -107,7 +210,7 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
           Huỷ
         </Button>
         <Button type="submit" isLoading={isSubmitting}>
-          {isEdit ? 'Cập nhật' : 'Lưu'}
+          Cập nhật
         </Button>
       </div>
     </form>

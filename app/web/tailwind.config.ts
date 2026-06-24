@@ -111,6 +111,26 @@ const config: Config = {
       letterSpacing: {
         chip: '0.5px',
       },
+
+      // ── Keyframes + animations (drawer/overlay slide & fade) ──────────
+      keyframes: {
+        'slide-in-right': {
+          from: { transform: 'translateX(100%)' },
+          to: { transform: 'translateX(0)' },
+        },
+        'slide-out-right': {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(100%)' },
+        },
+        'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'fade-out': { from: { opacity: '1' }, to: { opacity: '0' } },
+      },
+      animation: {
+        'slide-in-right': 'slide-in-right 280ms cubic-bezier(0.32, 0.72, 0, 1)',
+        'slide-out-right': 'slide-out-right 220ms cubic-bezier(0.32, 0.72, 0, 1)',
+        'fade-in': 'fade-in 220ms ease-out',
+        'fade-out': 'fade-out 180ms ease-in',
+      },
     },
   },
   plugins: [],

@@ -73,7 +73,7 @@ export function ReportIframe({ reportId, className }: ReportIframeProps) {
       // sandbox without allow-scripts — see security note above
       sandbox="allow-same-origin"
       srcDoc={htmlContent}
-      className={className ?? 'h-full w-full min-h-[600px] rounded border border-nav-border bg-surface'}
+      className={className ?? 'h-full w-full min-h-screen border border-nav-border'}
       data-testid="report-iframe"
     />
   );

@@ -104,13 +104,14 @@ export function TokenList({ tokens, isLoading, isRevoking, onRevoke }: TokenList
     {
       key: 'actions',
       header: '',
-      headerClassName: 'w-[120px]',
+      headerClassName: 'w-[150px]',
       className: 'w-[120px] text-right',
       cell: (row) =>
         row.revokedAt ? null : (
           <Button
             variant="destructive"
             size="sm"
+      className='shrink-0!'
             onClick={() => handleRevokeClick(row.id)}
             disabled={isRevoking}
           >

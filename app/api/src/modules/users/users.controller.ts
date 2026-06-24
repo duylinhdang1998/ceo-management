@@ -14,7 +14,6 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtGuard } from '../../common/auth/jwt.guard';
 import { RolesGuard } from '../../common/auth/roles.guard';
@@ -61,8 +60,8 @@ export class UsersController {
 
   @Post(':id/reset-password')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
-    return this.usersService.resetPassword(id, dto);
+  async resetPassword(@Param('id') id: string) {
+    return this.usersService.resetPassword(id);
   }
 
   @Delete(':id')
