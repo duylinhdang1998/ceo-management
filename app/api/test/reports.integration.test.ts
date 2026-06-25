@@ -642,12 +642,12 @@ describe('Feature: Danh sách + tìm kiếm báo cáo (US-B5)', () => {
 
   describe('Scenario: Phân trang mặc định 15/trang', () => {
     it('should return at most 15 items by default with correct meta.total', async () => {
-      // Seed enough reports to exceed 15 on page 1
-      const seeds: Promise<string>[] = [];
+      // Seed enough reports to exceed 15 on page 1.
+      // Sequential inserts avoid ECONNRESET from 17 concurrent multipart uploads
+      // that would overwhelm the in-process NestJS HTTP server.
       for (let i = 0; i < 17; i++) {
-        seeds.push(createReport(ceoToken, `Pagination Seed ${i}`));
+        await createReport(ceoToken, `Pagination Seed ${i}`);
       }
-      await Promise.all(seeds);
 
       const res = await request(app.getHttpServer())
         .get('/api/reports')
@@ -658,7 +658,7 @@ describe('Feature: Danh sách + tìm kiếm báo cáo (US-B5)', () => {
       expect(res.body.meta.page).toBe(1);
       expect(res.body.meta.limit).toBe(15);
       expect(res.body.meta.total).toBeGreaterThanOrEqual(17);
-    });
+    }, 60000);
   });
 
   describe('Scenario: Tìm kiếm theo từ khóa tiêu đề', () => {
