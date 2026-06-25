@@ -7,30 +7,6 @@
       "event": "subagent_stop",
       "agent": "vfm-agent-company:meta-react-architect",
       "agentName": "unknown",
-      "timestamp": "2026-06-24T14:49:19Z"
-    },
-    {
-      "event": "subagent_start",
-      "agent": "vfm-agent-company:meta-react-architect",
-      "agentName": "unknown",
-      "timestamp": "2026-06-24T15:31:12Z"
-    },
-    {
-      "event": "subagent_stop",
-      "agent": "vfm-agent-company:meta-react-architect",
-      "agentName": "unknown",
-      "timestamp": "2026-06-24T15:42:11Z"
-    },
-    {
-      "event": "subagent_start",
-      "agent": "vfm-agent-company:meta-react-architect",
-      "agentName": "unknown",
-      "timestamp": "2026-06-24T15:47:35Z"
-    },
-    {
-      "event": "subagent_stop",
-      "agent": "vfm-agent-company:meta-react-architect",
-      "agentName": "unknown",
       "timestamp": "2026-06-24T15:52:50Z"
     },
     {
@@ -104,6 +80,30 @@
       "agent": "vfm-agent-company:netflix-backend-architect",
       "agentName": "unknown",
       "timestamp": "2026-06-24T17:32:00Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "netflix-backend-architect",
+      "agentName": "James Wilson",
+      "timestamp": "2026-06-25T04:32:25Z"
+    },
+    {
+      "event": "subagent_start",
+      "agent": "meta-react-architect",
+      "agentName": "Sarah Chen",
+      "timestamp": "2026-06-25T04:32:49Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "netflix-backend-architect",
+      "agentName": "James Wilson",
+      "timestamp": "2026-06-25T04:38:25Z"
+    },
+    {
+      "event": "subagent_stop",
+      "agent": "meta-react-architect",
+      "agentName": "Sarah Chen",
+      "timestamp": "2026-06-25T04:40:53Z"
     }
   ],
   "sessions": {}

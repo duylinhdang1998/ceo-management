@@ -17,12 +17,35 @@ export function useReport(id: string) {
   });
 }
 
+// ── useReportViewToken — GET /api/reports/:id/view-token ──────────────────
+// Fetches a short-lived JWT view-token used to authenticate the iframe src URL.
+// Token expires in 5 minutes (server-side); staleTime is kept short so a
+// re-mount gets a fresh token before the previous one expires.
+export function useReportViewToken(id: string) {
+  return useQuery<string>({
+    queryKey: queryKeys.reports.viewToken(id),
+    queryFn: async () => {
+      const res = await apiClient.get<ApiResponse<{ token: string }>>(
+        `/api/reports/${id}/view-token`,
+      );
+      return res.data.data.token;
+    },
+    enabled: Boolean(id),
+    // Keep well under the 5 min server expiry to avoid serving stale tokens
+    staleTime: 3 * 60_000,
+    gcTime: 5 * 60_000,
+    // Do not retry aggressively — 403 means no access
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 403 || status === 404) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
 // ── useReportContent — fetches HTML content as text ────────────────────────
-// Returns the raw HTML string to be rendered in an iframe via srcDoc.
-// This avoids creating an object URL (no need to revoke), and the JWT
-// is attached by api-client's request interceptor (Bearer token).
-// XSS note: the sandbox attribute on the iframe prevents scripts from
-// accessing the parent page. See ReportIframe.tsx for the full security note.
+// Kept for backwards compatibility; no longer used by ReportIframe (which now
+// uses the token-based src approach) but may still be used by other consumers.
 export function useReportContent(id: string) {
   return useQuery<string>({
     queryKey: queryKeys.reports.content(id),

@@ -80,17 +80,23 @@ export function useUpdateReport() {
 }
 
 // ── useReplaceAssignments — PUT /api/reports/:id/assignments ───────────────
+export interface AssigneePermissions {
+  userId: string;
+  canEdit: boolean;
+  canDownload: boolean;
+}
+
 export interface ReplaceAssignmentsPayload {
   reportId: string;
-  userIds: string[];
+  assignees: AssigneePermissions[];
 }
 
 export function useReplaceAssignments() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, ReplaceAssignmentsPayload>({
-    mutationFn: async ({ reportId, userIds }) => {
-      await apiClient.put(`/api/reports/${reportId}/assignments`, { userIds });
+    mutationFn: async ({ reportId, assignees }) => {
+      await apiClient.put(`/api/reports/${reportId}/assignments`, { assignees });
     },
     onSuccess: (_data, { reportId }) => {
       void queryClient.invalidateQueries({ queryKey: ['report-assignees', reportId] });

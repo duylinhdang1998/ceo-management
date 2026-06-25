@@ -58,7 +58,7 @@ export class AssignmentsController {
   /**
    * PUT /api/reports/:reportId/assignments
    * Replace the full assignee set atomically — super_admin only, idempotent.
-   * Body: { userIds: string[] } — empty array clears all assignments.
+   * Body: { assignees: AssigneePermissionDto[] } — empty array clears all assignments.
    */
   @Put()
   @Roles("super_admin")

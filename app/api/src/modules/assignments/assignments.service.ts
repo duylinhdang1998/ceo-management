@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   AssignmentsRepository,
   AssigneePublic,
+  AssignmentPermissions,
 } from "./assignments.repository";
 import { AssignUsersDto } from "./dto/assign-users.dto";
 import { ReplaceAssigneesDto } from "./dto/replace-assignees.dto";
@@ -70,8 +71,8 @@ export class AssignmentsService {
 
   /**
    * PUT /api/reports/:id/assignments — replace the full assignee set atomically.
-   * Adds missing users, removes users not in the new list.
-   * An empty userIds array clears all assignments.
+   * Adds/updates assignees with permission flags; removes users not in the new list.
+   * An empty assignees array clears all assignments.
    */
   async replaceAssignees(
     reportId: string,
@@ -87,9 +88,10 @@ export class AssignmentsService {
     }
 
     // Verify all provided userIds exist (skip when clearing)
-    if (dto.userIds.length > 0) {
-      const existingCount = await this.repo.countExistingUsers(dto.userIds);
-      if (existingCount !== dto.userIds.length) {
+    if (dto.assignees.length > 0) {
+      const userIds = dto.assignees.map((a) => a.userId);
+      const existingCount = await this.repo.countExistingUsers(userIds);
+      if (existingCount !== userIds.length) {
         throw new NotFoundException({
           code: "NOT_FOUND",
           message: "Một hoặc nhiều nhân viên không tồn tại",
@@ -97,11 +99,11 @@ export class AssignmentsService {
       }
     }
 
-    await this.repo.replaceAssignees(reportId, dto.userIds, replacedBy);
+    await this.repo.replaceAssignees(reportId, dto.assignees, replacedBy);
 
     return {
       message: "Cập nhật danh sách gán thành công",
-      count: dto.userIds.length,
+      count: dto.assignees.length,
     };
   }
 
@@ -121,5 +123,27 @@ export class AssignmentsService {
    */
   async getAssignedReportIds(userId: string): Promise<string[]> {
     return this.repo.getAssignedReportIds(userId);
+  }
+
+  /**
+   * Fetch can_edit / can_download flags for a single (reportId, userId).
+   * Returns null if the assignment row does not exist.
+   */
+  async getPermissions(
+    reportId: string,
+    userId: string,
+  ): Promise<AssignmentPermissions | null> {
+    return this.repo.getPermissions(reportId, userId);
+  }
+
+  /**
+   * Batch-fetch permission flags for userId across multiple reportIds.
+   * Returns a map of reportId → { canEdit, canDownload }.
+   */
+  async getPermissionsBatch(
+    userId: string,
+    reportIds: string[],
+  ): Promise<Map<string, AssignmentPermissions>> {
+    return this.repo.getPermissionsBatch(userId, reportIds);
   }
 }

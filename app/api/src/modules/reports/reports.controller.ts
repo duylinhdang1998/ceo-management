@@ -21,13 +21,14 @@ import { memoryStorage } from "multer";
 import { JwtGuard } from "../../common/auth/jwt.guard";
 import { RolesGuard } from "../../common/auth/roles.guard";
 import { JwtOrPatWriteGuard } from "../../common/auth/jwt-or-pat-write.guard";
+import { ReportUpdateGuard } from "../../common/auth/report-update.guard";
+import { ReportContentGuard } from "../../common/auth/report-content.guard";
 import { Roles } from "../../common/auth/roles.decorator";
 import {
   CurrentUser,
   JwtPayload,
 } from "../../common/auth/current-user.decorator";
 import { PaginationDto } from "../../common/dto/pagination.dto";
-import { paginated } from "../../common/response.interceptor";
 import { ReportsService } from "./reports.service";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { UpdateReportDto } from "./dto/update-report.dto";
@@ -40,10 +41,8 @@ import { BulkDeleteReportsDto } from "./dto/bulk-delete.dto";
  *   - JWT with role=super_admin  (JwtGuard + RolesGuard)
  *   - Valid PAT in Bearer header (PatGuard)
  *
- * JwtOrPatWriteGuard (from common/auth) implements OR logic — PAT check first,
- * JWT fallback — so NestJS AND-chaining limitation is bypassed via a single guard.
- *
- * Read endpoints use JwtGuard only; role-scoped filtering is handled in service.
+ * PUT /api/reports/:id additionally allows employee JWT if they have can_edit
+ * (ReportUpdateGuard admits all valid JWT roles; service enforces can_edit for employees).
  */
 
 // ---------------------------------------------------------------------------
@@ -78,17 +77,18 @@ export class ReportsController {
   }
 
   // --------------------------------------------------------------------------
-  // PUT /api/reports/:id — update (super_admin JWT or PAT)
+  // PUT /api/reports/:id — update (super_admin JWT/PAT OR employee with can_edit)
   // --------------------------------------------------------------------------
   @Put(":id")
-  @UseGuards(JwtOrPatWriteGuard)
+  @UseGuards(ReportUpdateGuard)
   @UseInterceptors(FileInterceptor("file", multerMemoryOptions))
   async update(
     @Param("id") id: string,
     @Body() dto: UpdateReportDto,
     @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.reportsService.update(id, dto, file);
+    return this.reportsService.update(id, dto, file, user.role, user.sub);
   }
 
   // --------------------------------------------------------------------------
@@ -124,17 +124,17 @@ export class ReportsController {
     @Query() pagination: PaginationDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    const result = await this.reportsService.findAll(
-      pagination,
-      user.role,
-      user.sub,
-    );
-    return paginated(result.data, {
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: Math.ceil(result.total / result.limit),
-    });
+    return this.reportsService.findAll(pagination, user.role, user.sub);
+  }
+
+  // --------------------------------------------------------------------------
+  // GET /api/reports/:id/view-token — issue short-lived view token (JWT)
+  // NOTE: declared BEFORE :id so NestJS routing matches ":id/view-token" correctly
+  // --------------------------------------------------------------------------
+  @Get(":id/view-token")
+  @UseGuards(JwtGuard)
+  async getViewToken(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
+    return this.reportsService.getViewToken(id, user.role, user.sub);
   }
 
   // --------------------------------------------------------------------------
@@ -148,10 +148,10 @@ export class ReportsController {
   }
 
   // --------------------------------------------------------------------------
-  // GET /api/reports/:id/content — HTML proxy (JWT, authz in service)
+  // GET /api/reports/:id/content — HTML proxy (ReportContentGuard; authz in service)
   // --------------------------------------------------------------------------
   @Get(":id/content")
-  @UseGuards(JwtGuard)
+  @UseGuards(ReportContentGuard)
   async getContent(
     @Param("id") id: string,
     @CurrentUser() user: JwtPayload,
@@ -163,10 +163,6 @@ export class ReportsController {
       user.sub,
     );
 
-    // Security headers for iframe proxy:
-    // - X-Content-Type-Options: nosniff — prevent MIME sniffing
-    // - Content-Security-Policy: tighten what the proxied HTML can do
-    // - Do NOT set X-Frame-Options (that would block the iframe itself)
     res
       .status(200)
       .set(
@@ -179,7 +175,14 @@ export class ReportsController {
       .set("Cache-Control", "no-store")
       .set(
         "Content-Security-Policy",
-        "default-src 'none'; style-src 'unsafe-inline'; img-src data:;",
+        [
+          "default-src 'self' data: blob:",
+          "script-src 'unsafe-inline' 'unsafe-eval' https: data: blob:",
+          "style-src 'unsafe-inline' https: data:",
+          "img-src https: data: blob:",
+          "font-src https: data:",
+          "connect-src https:",
+        ].join("; "),
       )
       .send(html);
   }

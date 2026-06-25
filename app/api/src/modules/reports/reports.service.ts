@@ -5,13 +5,21 @@ import {
   ForbiddenException,
   Logger,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { S3Service } from "../../infra/s3.service";
 import { AssignmentsService } from "../assignments/assignments.service";
 import { ReportsRepository, ReportRow } from "./reports.repository";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { UpdateReportDto } from "./dto/update-report.dto";
 import { PaginationDto } from "../../common/dto/pagination.dto";
+import { paginated } from "../../common/response.interceptor";
 import * as crypto from "crypto";
+
+type PaginatedResult<T> = {
+  data: T;
+  meta: Record<string, unknown>;
+  __wrapped__: true;
+};
 
 /** Max file size for HTML uploads (default 70 MB). Configurable via env. */
 const MAX_HTML_BYTES =
@@ -29,9 +37,16 @@ export interface ReportDto {
   updatedAt: string;
   /** Number of employees assigned to this report (0 when none). */
   assigneeCount: number;
+  /** Whether the current viewer may edit this report. */
+  canEdit: boolean;
+  /** Whether the current viewer may download this report. */
+  canDownload: boolean;
 }
 
-function toDto(row: ReportRow): ReportDto {
+function toDto(
+  row: ReportRow,
+  flags: { canEdit: boolean; canDownload: boolean },
+): ReportDto {
   return {
     id: row.id,
     title: row.title,
@@ -45,6 +60,8 @@ function toDto(row: ReportRow): ReportDto {
     // assignee_count comes from the LEFT JOIN COUNT in repository queries;
     // default to 0 for mutations (create/update) that return bare ReportRow without the join.
     assigneeCount: row.assignee_count ?? 0,
+    canEdit: flags.canEdit,
+    canDownload: flags.canDownload,
   };
 }
 
@@ -56,6 +73,7 @@ export class ReportsService {
     private readonly reportsRepo: ReportsRepository,
     private readonly s3: S3Service,
     private readonly assignmentsService: AssignmentsService,
+    private readonly jwtService: JwtService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -79,12 +97,6 @@ export class ReportsService {
 
   // ---------------------------------------------------------------------------
   // CREATE — S3 first, then INSERT (no orphan risk)
-  //
-  // Strategy (a) per code-review: generate the UUID client-side, upload to S3
-  // with the real key, then INSERT the DB row with the real s3_key.
-  // If S3 fails before the INSERT there is no DB row to clean up.
-  // If DB INSERT fails after S3 the object is in S3 but inaccessible (harmless
-  // orphan in object storage — no broken FK, no dangling row in DB).
   // ---------------------------------------------------------------------------
 
   async create(
@@ -96,11 +108,9 @@ export class ReportsService {
     let mimeType: string;
 
     if (file) {
-      // Multipart file upload
       htmlBuf = file.buffer;
       mimeType = file.mimetype;
     } else if (dto.htmlContent) {
-      // JSON body flow (FR7.2)
       htmlBuf = Buffer.from(dto.htmlContent, "utf8");
       mimeType = "text/html";
     } else {
@@ -109,16 +119,11 @@ export class ReportsService {
 
     this.validateHtmlBuffer(htmlBuf, mimeType);
 
-    // Generate a deterministic ID and S3 key BEFORE touching the DB.
-    // This way: S3 upload → INSERT with real key (no 'pending' state).
     const reportId = crypto.randomUUID();
     const s3Key = this.buildS3Key(reportId);
 
-    // Upload to S3 first — if this throws, nothing hits the DB.
     await this.s3.putHtml(s3Key, htmlBuf.toString("utf8"));
 
-    // Insert DB row with the real s3_key from the start.
-    // status is always 'published' — client cannot override on create.
     const report = await this.reportsRepo.createWithId({
       id: reportId,
       title: dto.title,
@@ -130,25 +135,31 @@ export class ReportsService {
     });
 
     this.logger.log(`Report created id=${reportId} s3Key=${s3Key}`);
-    return toDto(report);
+    // Creator is super_admin — both flags true
+    return toDto(report, { canEdit: true, canDownload: true });
   }
 
   // ---------------------------------------------------------------------------
-  // UPDATE — upload new S3 object before updating DB reference
-  //
-  // Safety: we compute the new key and upload BEFORE calling repo.update().
-  // If the upload fails the DB still holds the old (valid) s3_key.
-  // If the DB update fails after the upload, the new S3 object is orphaned in
-  // object storage (harmless) and the DB row keeps the old working key.
+  // UPDATE — allow super_admin or employee with can_edit
   // ---------------------------------------------------------------------------
 
   async update(
     id: string,
     dto: UpdateReportDto,
     file: Express.Multer.File | undefined,
+    role: "super_admin" | "employee",
+    userId: string,
   ): Promise<ReportDto> {
     const existing = await this.reportsRepo.findById(id);
     if (!existing) throw new NotFoundException("Báo cáo không tìm thấy");
+
+    // Employee authz: must have can_edit
+    if (role !== "super_admin") {
+      const perms = await this.assignmentsService.getPermissions(id, userId);
+      if (!perms || !perms.canEdit) {
+        throw new ForbiddenException("Bạn không có quyền sửa báo cáo này");
+      }
+    }
 
     const updateData: Parameters<ReportsRepository["update"]>[1] = {};
 
@@ -156,7 +167,6 @@ export class ReportsService {
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.status !== undefined) updateData.status = dto.status;
 
-    // Handle HTML replacement — upload to S3 BEFORE updating the DB record.
     let htmlBuf: Buffer | undefined;
     let mimeType: string | undefined;
 
@@ -170,7 +180,6 @@ export class ReportsService {
 
     if (htmlBuf && mimeType) {
       this.validateHtmlBuffer(htmlBuf, mimeType);
-      // Upload succeeds → only then stamp the new key into the update payload.
       const s3Key = this.buildS3Key(id);
       await this.s3.putHtml(s3Key, htmlBuf.toString("utf8"));
       updateData.s3Key = s3Key;
@@ -180,7 +189,15 @@ export class ReportsService {
     const updated = await this.reportsRepo.update(id, updateData);
     if (!updated) throw new NotFoundException("Báo cáo không tìm thấy");
     this.logger.log(`Report updated id=${id}`);
-    return toDto(updated);
+    // Determine flags for the response
+    const flags =
+      role === "super_admin"
+        ? { canEdit: true, canDownload: true }
+        : ((await this.assignmentsService.getPermissions(id, userId)) ?? {
+            canEdit: false,
+            canDownload: false,
+          });
+    return toDto(updated, flags);
   }
 
   // ---------------------------------------------------------------------------
@@ -207,34 +224,21 @@ export class ReportsService {
 
   // ---------------------------------------------------------------------------
   // LIST — employees see only assigned + published + not-deleted reports
-  //
-  // Delegates to AssignmentsService.getAssignedReportIds() which already applies
-  // the JOIN reports r ON r.deleted_at IS NULL AND r.status = 'published' filter.
-  // The repository list() then applies its own deleted_at IS NULL guard + the
-  // reportIds array filter, so the combined result is: assigned AND published
-  // AND not-deleted — behaviour is identical to the original inline query.
   // ---------------------------------------------------------------------------
 
   async findAll(
     pagination: PaginationDto,
     role: "super_admin" | "employee",
     userId: string,
-  ): Promise<{
-    data: ReportDto[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  ): Promise<PaginatedResult<ReportDto[]>> {
     let reportIds: string[] | undefined;
     let publishedOnly = false;
-    // assignedTo is only honoured for super_admin — employees have their own scope
     const assignedTo =
       role === "super_admin" ? pagination.assignedTo : undefined;
 
     if (role === "employee") {
-      // AssignmentsService.getAssignedReportIds already filters published + not-deleted.
       reportIds = await this.assignmentsService.getAssignedReportIds(userId);
-      publishedOnly = true; // belt-and-suspenders: also filter in list() query
+      publishedOnly = true;
     }
 
     const { rows, total } = await this.reportsRepo.list({
@@ -248,12 +252,32 @@ export class ReportsService {
       assignedTo,
     });
 
-    return {
-      data: rows.map(toDto),
+    let dtos: ReportDto[];
+
+    if (role === "super_admin") {
+      dtos = rows.map((r) => toDto(r, { canEdit: true, canDownload: true }));
+    } else {
+      // Batch fetch permission flags for all listed reports
+      const ids = rows.map((r) => r.id);
+      const permMap = await this.assignmentsService.getPermissionsBatch(
+        userId,
+        ids,
+      );
+      dtos = rows.map((r) => {
+        const perms = permMap.get(r.id) ?? {
+          canEdit: false,
+          canDownload: false,
+        };
+        return toDto(r, perms);
+      });
+    }
+
+    return paginated(dtos, {
       total,
       page: pagination.page,
       limit: pagination.limit,
-    };
+      totalPages: Math.ceil(total / pagination.limit),
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -269,14 +293,43 @@ export class ReportsService {
     if (!report) throw new NotFoundException("Báo cáo không tìm thấy");
 
     if (role === "employee") {
-      // Delegate assignment check to AssignmentsService (single source of truth).
+      const assigned = await this.assignmentsService.isAssigned(id, userId);
+      if (!assigned || report.status !== "published") {
+        throw new ForbiddenException("Bạn không có quyền xem báo cáo này");
+      }
+      const perms = await this.assignmentsService.getPermissions(id, userId);
+      return toDto(report, perms ?? { canEdit: false, canDownload: false });
+    }
+
+    // super_admin
+    return toDto(report, { canEdit: true, canDownload: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW-TOKEN — short-lived JWT scoped to one report
+  // ---------------------------------------------------------------------------
+
+  async getViewToken(
+    id: string,
+    role: "super_admin" | "employee",
+    userId: string,
+  ): Promise<{ token: string }> {
+    const report = await this.reportsRepo.findById(id);
+    if (!report) throw new NotFoundException("Báo cáo không tìm thấy");
+
+    if (role === "employee") {
       const assigned = await this.assignmentsService.isAssigned(id, userId);
       if (!assigned || report.status !== "published") {
         throw new ForbiddenException("Bạn không có quyền xem báo cáo này");
       }
     }
 
-    return toDto(report);
+    const token = await this.jwtService.signAsync(
+      { sub: userId, role, reportId: id, purpose: "report-view" },
+      { secret: process.env.JWT_SECRET, expiresIn: "5m" },
+    );
+
+    return { token };
   }
 
   // ---------------------------------------------------------------------------
@@ -288,14 +341,12 @@ export class ReportsService {
     role: "super_admin" | "employee",
     userId: string,
   ): Promise<{ html: Buffer; contentType: string }> {
-    // Find report — include checking deleted_at
     const report = await this.reportsRepo.findByIdIncludeDeleted(id);
     if (!report || report.deleted_at !== null) {
       throw new NotFoundException("Báo cáo không tìm thấy");
     }
 
     if (role === "employee") {
-      // Delegate assignment check to AssignmentsService.
       const assigned = await this.assignmentsService.isAssigned(id, userId);
       if (!assigned) {
         throw new ForbiddenException("Bạn không có quyền xem báo cáo này");

@@ -13,6 +13,10 @@ export interface Report {
   updatedAt: string;
   /** Number of employees this report has been assigned to (returned by backend) */
   assigneeCount?: number;
+  /** Whether the current viewer may edit this report (from assignment row; super_admin → true) */
+  canEdit?: boolean;
+  /** Whether the current viewer may download this report (from assignment row; super_admin → true) */
+  canDownload?: boolean;
 }
 
 export interface ReportListParams {

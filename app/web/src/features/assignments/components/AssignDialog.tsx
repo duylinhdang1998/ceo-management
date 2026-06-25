@@ -9,7 +9,7 @@ import { Button } from '@/shared/ui/Button';
 import { apiClient } from '@/shared/lib/api-client';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { User, ApiResponse, Pagination as PaginationMeta } from '@/shared/types';
-import { useReplaceAssignments } from '@/features/reports/hooks/useReportMutations';
+import { useReplaceAssignments, type AssigneePermissions } from '@/features/reports/hooks/useReportMutations';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const PAGE_SIZE = 15;
@@ -30,17 +30,31 @@ interface UsersPage {
   meta: PaginationMeta;
 }
 
-// ── useAssignedIds — GET /api/reports/:id/assignments ──────────────────────
+// Shape returned by GET /api/reports/:id/assignments
+interface AssignmentRecord {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  canEdit: boolean;
+  canDownload: boolean;
+  assignedAt: string;
+}
 
-function useAssignedIds(reportId: string, enabled: boolean) {
-  return useQuery<string[]>({
+// ── useCurrentAssignments — GET /api/reports/:id/assignments ──────────────
+function useCurrentAssignments(reportId: string, enabled: boolean) {
+  return useQuery<AssigneePermissions[]>({
     queryKey: ['report-assignees', reportId],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<ApiResponse<User[]>>(
+        const res = await apiClient.get<ApiResponse<AssignmentRecord[]>>(
           `/api/reports/${reportId}/assignments`,
         );
-        return res.data.data.map((u) => u.id);
+        return res.data.data.map((a) => ({
+          userId: a.userId ?? a.id,
+          canEdit: a.canEdit ?? false,
+          canDownload: a.canDownload ?? false,
+        }));
       } catch {
         return [];
       }
@@ -51,7 +65,6 @@ function useAssignedIds(reportId: string, enabled: boolean) {
 }
 
 // ── useEmployeePage — GET /api/users (paginated) ───────────────────────────
-
 function useEmployeePage(page: number, search: string) {
   return useQuery<UsersPage>({
     queryKey: ['users', search, page, PAGE_SIZE],
@@ -70,37 +83,57 @@ function useEmployeePage(page: number, search: string) {
 }
 
 // ── AssignDialog ───────────────────────────────────────────────────────────
-// Dialog for assigning employees to a report.
-// Checkbox table with pagination (15/page). Selection persists across pages.
-// On Save → PUT /api/reports/:id/assignments {userIds:[…]}.
+// Dialog for assigning employees to a report with per-user canEdit/canDownload.
+// Selection model: Map<userId, AssigneePermissions>
+//   - present in map = assigned (selected)
+//   - absent from map = not assigned
+// Page select-all adds rows with both flags false (can be toggled per row).
+// Persists across page changes.
 
-export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSuccess, onError }: AssignDialogProps) {
+export function AssignDialog({
+  open,
+  onOpenChange,
+  reportId,
+  reportTitle,
+  onSuccess,
+  onError,
+}: AssignDialogProps) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
 
-  // Selection state: persists across pages
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Core selection: Map<userId, { userId, canEdit, canDownload }>
+  const [permMap, setPermMap] = useState<Map<string, AssigneePermissions>>(new Map());
   const [initialized, setInitialized] = useState(false);
 
-  const { data: assignedIds, isLoading: isLoadingAssigned } = useAssignedIds(reportId, open);
-  const { data: usersPage, isLoading: isLoadingUsers } = useEmployeePage(page, debouncedSearch);
+  const { data: currentAssignments, isLoading: isLoadingAssigned } = useCurrentAssignments(
+    reportId,
+    open,
+  );
+  const { data: usersPage, isLoading: isLoadingUsers } = useEmployeePage(
+    page,
+    debouncedSearch,
+  );
 
   const { mutate: replaceAssignments, isPending: isSaving } = useReplaceAssignments();
 
-  // Initialize selection from current assignments once loaded
+  // Initialize from server once loaded
   useEffect(() => {
-    if (!initialized && assignedIds) {
-      setSelectedIds(new Set(assignedIds));
+    if (!initialized && currentAssignments) {
+      const map = new Map<string, AssigneePermissions>();
+      for (const a of currentAssignments) {
+        map.set(a.userId, a);
+      }
+      setPermMap(map);
       setInitialized(true);
     }
-  }, [assignedIds, initialized]);
+  }, [currentAssignments, initialized]);
 
   // Reset when dialog closes
   useEffect(() => {
     if (!open) {
       setInitialized(false);
-      setSelectedIds(new Set());
+      setPermMap(new Map());
       setPage(1);
       setSearch('');
     }
@@ -111,30 +144,57 @@ export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSucc
     setPage(1);
   }, []);
 
-  const handleToggle = useCallback((userId: string, checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(userId);
-      else next.delete(userId);
+  // Toggle row selection (add with defaults or remove)
+  const handleToggleRow = useCallback((userId: string, selected: boolean) => {
+    setPermMap((prev) => {
+      const next = new Map(prev);
+      if (selected) {
+        next.set(userId, { userId, canEdit: false, canDownload: false });
+      } else {
+        next.delete(userId);
+      }
       return next;
     });
   }, []);
 
-  const handleSelectAll = useCallback((checked: boolean) => {
-    const pageUsers = usersPage?.users ?? [];
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const u of pageUsers) {
-        if (checked) next.add(u.id);
-        else next.delete(u.id);
-      }
-      return next;
-    });
-  }, [usersPage]);
+  // Toggle a permission flag for an already-selected user
+  const handleTogglePerm = useCallback(
+    (userId: string, perm: 'canEdit' | 'canDownload', value: boolean) => {
+      setPermMap((prev) => {
+        const existing = prev.get(userId);
+        if (!existing) return prev; // user not selected — no-op
+        const next = new Map(prev);
+        next.set(userId, { ...existing, [perm]: value });
+        return next;
+      });
+    },
+    [],
+  );
+
+  // Select all on current page (adds with both flags false if not present)
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      const pageUsers = usersPage?.users ?? [];
+      setPermMap((prev) => {
+        const next = new Map(prev);
+        for (const u of pageUsers) {
+          if (checked) {
+            if (!next.has(u.id)) {
+              next.set(u.id, { userId: u.id, canEdit: false, canDownload: false });
+            }
+          } else {
+            next.delete(u.id);
+          }
+        }
+        return next;
+      });
+    },
+    [usersPage],
+  );
 
   const handleSave = () => {
     replaceAssignments(
-      { reportId, userIds: Array.from(selectedIds) },
+      { reportId, assignees: Array.from(permMap.values()) },
       {
         onSuccess: () => {
           onSuccess('Gán nhân viên thành công');
@@ -152,8 +212,8 @@ export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSucc
   const totalPages = meta?.totalPages ?? 1;
   const total = meta?.total ?? 0;
 
-  const pageAllChecked = users.length > 0 && users.every((u) => selectedIds.has(u.id));
-  const pageIndeterminate = !pageAllChecked && users.some((u) => selectedIds.has(u.id));
+  const pageAllChecked = users.length > 0 && users.every((u) => permMap.has(u.id));
+  const pageIndeterminate = !pageAllChecked && users.some((u) => permMap.has(u.id));
 
   const isLoading = isLoadingAssigned || isLoadingUsers;
 
@@ -162,12 +222,12 @@ export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSucc
       open={open}
       onOpenChange={onOpenChange}
       title={`Gán nhân viên — ${reportTitle}`}
-      description="Chọn nhân viên để gán vào báo cáo này"
+      description="Chọn nhân viên và quyền truy cập vào báo cáo này"
       size="lg"
       footer={
         <>
           <span className="font-sans text-[13px] text-helper-text mr-auto">
-            Đã chọn: <strong className="text-navy">{selectedIds.size}</strong> nhân viên
+            Đã chọn: <strong className="text-navy">{permMap.size}</strong> nhân viên
           </span>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Huỷ
@@ -200,7 +260,9 @@ export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSucc
             aria-label="Chọn tất cả trang này"
           />
           <span className="flex-1 font-sans text-[13px] font-medium text-navy">Tên nhân viên</span>
-          <span className="w-[200px] font-sans text-[13px] font-medium text-navy">Email</span>
+          <span className="w-[180px] font-sans text-[13px] font-medium text-navy">Email</span>
+          <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Sửa</span>
+          <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Tải</span>
         </div>
 
         {/* Rows */}
@@ -210,27 +272,72 @@ export function AssignDialog({ open, onOpenChange, reportId, reportTitle, onSucc
           </div>
         ) : users.length === 0 ? (
           <div className="py-xl text-center font-sans text-[14px] text-helper-text">
-            {search ? `Không tìm thấy nhân viên nào với từ khóa "${search}"` : 'Chưa có nhân viên nào.'}
+            {search
+              ? `Không tìm thấy nhân viên nào với từ khóa "${search}"`
+              : 'Chưa có nhân viên nào.'}
           </div>
         ) : (
-          users.map((user) => (
-            <div
-              key={user.id}
-              className="flex items-center gap-md px-md py-sm border-b border-nav-border last:border-b-0 hover:bg-ghost-hover transition-colors cursor-pointer"
-              onClick={() => handleToggle(user.id, !selectedIds.has(user.id))}
-            >
-              <Checkbox
-                checked={selectedIds.has(user.id)}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleToggle(user.id, e.target.checked);
-                }}
-                aria-label={`Chọn ${user.name}`}
-              />
-              <span className="flex-1 font-sans text-[14px] font-medium text-navy">{user.name}</span>
-              <span className="w-[200px] font-sans text-[14px] text-helper-text truncate">{user.email}</span>
-            </div>
-          ))
+          users.map((user) => {
+            const isSelected = permMap.has(user.id);
+            const perms = permMap.get(user.id);
+
+            return (
+              <div
+                key={user.id}
+                className="flex items-center gap-md px-md py-sm border-b border-nav-border last:border-b-0 hover:bg-ghost-hover transition-colors cursor-pointer"
+                onClick={() => handleToggleRow(user.id, !isSelected)}
+              >
+                {/* Row select */}
+                <Checkbox
+                  checked={isSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleToggleRow(user.id, e.target.checked);
+                  }}
+                  aria-label={`Chọn ${user.name}`}
+                />
+
+                <span className="flex-1 font-sans text-[14px] font-medium text-navy">
+                  {user.name}
+                </span>
+                <span className="w-[180px] font-sans text-[14px] text-helper-text truncate">
+                  {user.email}
+                </span>
+
+                {/* canEdit checkbox */}
+                <div
+                  className="w-[44px] flex justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={perms?.canEdit ?? false}
+                    disabled={!isSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleTogglePerm(user.id, 'canEdit', e.target.checked);
+                    }}
+                    aria-label={`Cho phép ${user.name} sửa`}
+                  />
+                </div>
+
+                {/* canDownload checkbox */}
+                <div
+                  className="w-[44px] flex justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={perms?.canDownload ?? false}
+                    disabled={!isSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleTogglePerm(user.id, 'canDownload', e.target.checked);
+                    }}
+                    aria-label={`Cho phép ${user.name} tải`}
+                  />
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 

@@ -3,6 +3,8 @@ import { ReportsController } from "./reports.controller";
 import { ReportsService } from "./reports.service";
 import { ReportsRepository } from "./reports.repository";
 import { JwtOrPatWriteGuard } from "../../common/auth/jwt-or-pat-write.guard";
+import { ReportUpdateGuard } from "../../common/auth/report-update.guard";
+import { ReportContentGuard } from "../../common/auth/report-content.guard";
 import { S3Module } from "../../infra/s3.module";
 import { AuthModule } from "../auth/auth.module";
 import { AssignmentsModule } from "../assignments/assignments.module";
@@ -12,18 +14,26 @@ import { AssignmentsModule } from "../assignments/assignments.module";
  *
  * Imports:
  *   - S3Module           — provides S3Service for HTML upload/download
- *   - AuthModule         — provides JwtModule (JwtService for JwtOrPatWriteGuard),
+ *   - AuthModule         — provides JwtModule (JwtService for guards),
  *                          JwtGuard, RolesGuard
- *   - AssignmentsModule  — exports AssignmentsService; provides isAssigned() and
- *                          getAssignedReportIds() for employee access control
+ *   - AssignmentsModule  — exports AssignmentsService; provides isAssigned(),
+ *                          getAssignedReportIds(), getPermissions(), getPermissionsBatch()
  *   - DbModule is global (provided by AppModule) — no explicit import needed
  *
- * JwtOrPatWriteGuard is imported from common/auth (per Blueprint) and registered
- * here as a provider so DI can inject DB_POOL and JwtService into it.
+ * Guards:
+ *   - JwtOrPatWriteGuard  — POST (create); PAT or super_admin JWT
+ *   - ReportUpdateGuard   — PUT (update); PAT or any authenticated JWT
+ *   - ReportContentGuard  — GET content; Authorization JWT or ?token view-token
  */
 @Module({
   imports: [S3Module, AuthModule, AssignmentsModule],
   controllers: [ReportsController],
-  providers: [ReportsService, ReportsRepository, JwtOrPatWriteGuard],
+  providers: [
+    ReportsService,
+    ReportsRepository,
+    JwtOrPatWriteGuard,
+    ReportUpdateGuard,
+    ReportContentGuard,
+  ],
 })
 export class ReportsModule {}

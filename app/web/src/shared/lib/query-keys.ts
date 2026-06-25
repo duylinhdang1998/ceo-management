@@ -21,6 +21,7 @@ export const queryKeys = {
     list: (params: Record<string, unknown>) => ['reports', 'list', params] as const,
     detail: (id: string) => ['reports', id] as const,
     content: (id: string) => ['reports', id, 'content'] as const,
+    viewToken: (id: string) => ['reports', id, 'view-token'] as const,
   },
 
   // Assignments

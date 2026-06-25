@@ -1,33 +1,26 @@
-import { useReportContent } from '../hooks/useReport';
+import { apiClient } from '@/shared/lib/api-client';
+import { useReportViewToken } from '../hooks/useReport';
 
 // ── ReportIframe ───────────────────────────────────────────────────────────
 //
 // Security / XSS tradeoff note
 // ─────────────────────────────
-// The iframe uses sandbox="allow-same-origin" only (no allow-scripts).
+// The iframe is loaded via a `src` URL pointing to the content endpoint,
+// authenticated by a short-lived view-token passed as a query param.
 //
-// Why no allow-scripts?
-//   - Report HTML files are uploaded by the CEO (trusted author), but may
-//     contain <script> tags from report generation tools.
-//   - Without allow-scripts the browser ignores all <script> tags in the
-//     iframe, neutralising XSS from embedded scripts.
-//   - With allow-same-origin but without allow-scripts the document can
-//     reference stylesheets for layout but cannot execute JavaScript.
+// sandbox="allow-scripts allow-popups allow-forms allow-modals"
+//   - allow-scripts: required for JS-powered report content (chart libs etc.)
+//   - allow-popups / allow-forms / allow-modals: convenience for report links
+//   - allow-same-origin is intentionally OMITTED. Without allow-same-origin
+//     the iframe's origin is treated as an opaque unique origin, meaning it
+//     cannot read cookies/localStorage from the parent app and cannot call
+//     postMessage tricks that escalate privileges.
 //
-// Consequence:
-//   - Pure HTML + CSS reports render correctly.
-//   - Reports that depend on JavaScript for rendering (e.g. chart libraries)
-//     will not render their dynamic parts. If such reports are required,
-//     add sandbox="allow-scripts" and document the tradeoff; do NOT add
-//     allow-same-origin simultaneously with allow-scripts unless strictly
-//     necessary (that combination allows sandbox escape).
-//
-// Content delivery:
-//   - HTML is fetched from /api/reports/:id/content via axios (JWT attached
-//     automatically by api-client interceptor).
-//   - The HTML text is assigned to the iframe via srcDoc, which keeps the
-//     JWT off the iframe src URL and avoids object URL lifecycle management.
-//   - The API proxy never redirects to S3; the client receives only HTML text.
+// View-token:
+//   - Fetched from GET /api/reports/:id/view-token (short-lived JWT, 5 min).
+//   - Passed as ?token=... on the content URL so the browser can load it as a
+//     normal navigation request (no Authorization header in iframe src).
+//   - The backend verifies purpose==='report-view' and reportId matches.
 
 export interface ReportIframeProps {
   reportId: string;
@@ -35,7 +28,12 @@ export interface ReportIframeProps {
 }
 
 export function ReportIframe({ reportId, className }: ReportIframeProps) {
-  const { data: htmlContent, isLoading, isError, error } = useReportContent(reportId);
+  const {
+    data: token,
+    isLoading,
+    isError,
+    error,
+  } = useReportViewToken(reportId);
 
   if (isLoading) {
     return (
@@ -67,12 +65,15 @@ export function ReportIframe({ reportId, className }: ReportIframeProps) {
     );
   }
 
+  const base = apiClient.defaults.baseURL ?? '';
+  const src = `${base}/api/reports/${reportId}/content?token=${encodeURIComponent(token ?? '')}`;
+
   return (
     <iframe
+      key={token}
       title="Nội dung báo cáo"
-      // sandbox without allow-scripts — see security note above
-      sandbox="allow-same-origin"
-      srcDoc={htmlContent}
+      src={src}
+      sandbox="allow-scripts allow-popups allow-forms allow-modals"
       className={className ?? 'h-full w-full min-h-screen border border-nav-border'}
       data-testid="report-iframe"
     />
