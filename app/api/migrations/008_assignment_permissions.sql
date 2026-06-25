@@ -1,4 +1,4 @@
--- Migration 004: Add per-user permission flags to report_assignments
+-- Migration 008: Add per-user permission flags to report_assignments
 -- Tracks whether each employee can edit or download a specific report.
 
 ALTER TABLE report_assignments
