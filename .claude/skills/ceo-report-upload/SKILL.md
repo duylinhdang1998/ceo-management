@@ -37,10 +37,15 @@ Chờ user trả lời (tên báo cáo hoặc URL dạng `https://host/reports/<
 
 ### Bước 3 — Chạy script
 
+`$SKILL_DIR` = thư mục chứa chính file SKILL.md này (Claude biết đường dẫn skill
+đang chạy — có thể là trong project `.claude/skills/ceo-report-upload/` hoặc
+global `~/.claude/skills/ceo-report-upload/`). Dùng đường dẫn tuyệt đối tới script,
+KHÔNG hardcode `.claude/skills/...` vì skill có thể được cài ở nhiều nơi khác nhau.
+
 Gọi script Node.js với đúng tham số:
 
 ```bash
-node .claude/skills/ceo-report-upload/scripts/report-upload.mjs \
+node "$SKILL_DIR/scripts/report-upload.mjs" \
   --file "<đường dẫn file HTML>" \
   --report "<tên hoặc URL báo cáo user vừa nhập>"
 ```
@@ -65,11 +70,11 @@ Script tự xử lý:
 
 ```bash
 # Chạy dry-run (không gọi API thật, chỉ test logic match)
-node .claude/skills/ceo-report-upload/scripts/report-upload.mjs \
+node "$SKILL_DIR/scripts/report-upload.mjs" \
   --file report.html --report "Tên báo cáo" --dry-run
 
 # Xem tất cả options
-node .claude/skills/ceo-report-upload/scripts/report-upload.mjs --help
+node "$SKILL_DIR/scripts/report-upload.mjs" --help
 ```
 
 ---

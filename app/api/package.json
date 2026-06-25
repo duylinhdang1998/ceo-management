@@ -17,6 +17,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage --runInBand",
     "test:integration": "jest --testPathPattern=test/ --runInBand",
+    "publish:skill": "node scripts/publish-skill.mjs",
     "migrate": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create",

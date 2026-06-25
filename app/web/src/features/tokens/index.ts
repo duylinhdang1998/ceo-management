@@ -5,8 +5,10 @@ export { useTokens } from './hooks/useTokens';
 export type { Pat, PatListResponse } from './hooks/useTokens';
 export { useCreateToken, useRevokeToken } from './hooks/useTokenMutations';
 export type { CreatePatPayload, CreatePatResponse } from './hooks/useTokenMutations';
+export { useDownloadSkill } from './hooks/useDownloadSkill';
 
 // Components
 export { TokenList } from './components/TokenList';
 export { CreateTokenForm } from './components/CreateTokenForm';
 export { TokenRevealModal } from './components/TokenRevealModal';
+export { SkillDownloadCard } from './components/SkillDownloadCard';

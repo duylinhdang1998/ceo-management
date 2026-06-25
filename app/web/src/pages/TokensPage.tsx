@@ -13,6 +13,7 @@ import {
   TokenList,
   CreateTokenForm,
   TokenRevealModal,
+  SkillDownloadCard,
 } from '@/features/tokens';
 import { CEO_NAV_ITEMS } from '@/shared/lib/nav-items';
 
@@ -108,6 +109,9 @@ export default function TokensPage() {
             báo cáo. Token chỉ được hiển thị một lần khi tạo.
           </p>
         </div>
+
+        {/* Skill download card — CEO grabs the Claude skill from here */}
+        <SkillDownloadCard onError={(msg) => showToast(msg, 'error')} />
 
         {/* Create form card */}
         <div className="rounded border border-nav-border bg-surface p-lg shadow-sm">

@@ -1128,3 +1128,43 @@ describe('Feature: PUT /api/reports/:id — employee edit permission', () => {
   });
 
 });
+
+// ============================================================
+// Feature: Download the Claude Code skill zip from the portal
+// ============================================================
+
+describe('Feature: GET /api/skill/ceo-report-upload', () => {
+  describe('Scenario: super_admin downloads the skill zip', () => {
+    it('should return 200 with a zip attachment for CEO', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/skill/ceo-report-upload')
+        .set('Authorization', `Bearer ${ceoToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-disposition']).toContain('attachment');
+      expect(res.headers['content-disposition']).toContain('ceo-report-upload-skill.zip');
+      // A real (non-empty) zip payload was streamed.
+      expect(Number(res.headers['content-length'])).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Scenario: employee is forbidden', () => {
+    it('should return 403 for an employee', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/skill/ceo-report-upload')
+        .set('Authorization', `Bearer ${employeeAToken}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Scenario: unauthenticated request is rejected', () => {
+    it('should return 401 without a token', async () => {
+      const res = await request(app.getHttpServer()).get(
+        '/api/skill/ceo-report-upload',
+      );
+
+      expect(res.status).toBe(401);
+    });
+  });
+});
