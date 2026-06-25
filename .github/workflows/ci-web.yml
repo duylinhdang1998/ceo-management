@@ -102,6 +102,21 @@ jobs:
       group: deploy-vps          # never run api + web deploy at the same time
       cancel-in-progress: false
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Ship the deploy script + prod compose to the VPS so it never has to be
+      # maintained there by hand. Only .env stays on the VPS (it holds secrets).
+      - name: Copy deploy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "deploy.sh,docker-compose.prod.yml"
+          target: ${{ secrets.VPS_PROJECT_DIR }}
+
       - name: Pull image & restart on VPS over SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -112,4 +127,5 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.VPS_PROJECT_DIR }}
+            chmod +x deploy.sh
             ./deploy.sh web
