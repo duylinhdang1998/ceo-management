@@ -9,6 +9,8 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 
 const BCRYPT_ROUNDS = 12;
+// Intentional non-secret default/placeholder: the temp password an employee gets
+// when an admin resets their account. They are forced to change it on first login.
 const DEFAULT_EMPLOYEE_PASSWORD = "Nhanvien@123";
 
 @Injectable()

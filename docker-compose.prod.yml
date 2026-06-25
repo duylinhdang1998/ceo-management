@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml — VPS / production stack (PULL pre-built images).
+#
+# Unlike docker-compose.yml (which BUILDS from local source for dev), this file
+# only PULLS images from GHCR that CI already built & pushed. The VPS needs just
+# THREE files — no source code:
+#     docker-compose.prod.yml  ·  deploy.sh  ·  .env
+#
+# Deploy / update:
+#     ./deploy.sh            # pull + restart api + web
+#     ./deploy.sh api        # only the api
+# or manually:
+#     docker compose -f docker-compose.prod.yml pull
+#     docker compose -f docker-compose.prod.yml up -d
+#
+# Image tag: defaults to :latest. To pin/rollback to a specific commit:
+#     IMAGE_TAG=<git-sha> docker compose -f docker-compose.prod.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL 16 ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ceo_portal}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-ceo_portal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── NestJS API (pulled image — migrations run on startup via entrypoint) ──
+  api:
+    image: ghcr.io/${GHCR_OWNER:-duylinhdang1998}/ceo-management-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Internal listen port — isolated to the Docker network, never clashes with
+      # host services. Keep 3000. Change the HOST port via API_HOST_PORT in .env.
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ceo_portal}
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── React + Vite served by nginx (pulled image) ─────────────
+  web:
+    image: ghcr.io/${GHCR_OWNER:-duylinhdang1998}/ceo-management-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      # Loopback only — host-nginx (80/443) proxies here. Drop "127.0.0.1:" to
+      # expose directly. Change host port via WEB_HOST_PORT in .env.
+      - "127.0.0.1:${WEB_HOST_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pgdata:
+    driver: local
