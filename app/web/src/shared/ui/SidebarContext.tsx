@@ -13,7 +13,6 @@ export interface SidebarContextValue {
 
 export const SidebarContext = createContext<SidebarContextValue | null>(null);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useSidebar(): SidebarContextValue {
   const ctx = useContext(SidebarContext);
   if (!ctx) throw new Error('useSidebar must be used inside SidebarProvider');
