@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { FileText, Upload, X } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
-import { Select } from '@/shared/ui/Select';
 import type { Report } from '../hooks/useReports';
 import type { UpdateReportPayload } from '../hooks/useReportMutations';
 
@@ -17,7 +16,6 @@ const ACCEPTED_EXT = '.html';
 const editSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc').max(200, 'Tiêu đề tối đa 200 ký tự'),
   description: z.string().max(1000, 'Mô tả tối đa 1000 ký tự').optional(),
-  status: z.enum(['draft', 'published']),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -31,14 +29,8 @@ export interface ReportFormProps {
   isSubmitting?: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Nháp (Draft)' },
-  { value: 'published', label: 'Đã xuất bản (Published)' },
-];
-
 // ── ReportForm ─────────────────────────────────────────────────────────────
 // Edit mode form. Allows replacing metadata + optionally uploading a new HTML file.
-// Status field shown only in edit mode (create = always published by backend).
 export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -48,26 +40,20 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
       title: report.title,
       description: report.description ?? '',
-      status: report.status,
     },
   });
-
-  const statusValue = watch('status');
 
   // Sync form when report prop changes
   useEffect(() => {
     reset({
       title: report.title,
       description: report.description ?? '',
-      status: report.status,
     });
     setSelectedFile(null);
     setFileError(null);
@@ -108,7 +94,6 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
       id: report.id,
       title: values.title,
       description: values.description,
-      status: values.status,
     };
     if (selectedFile) payload.file = selectedFile;
     onSubmit(payload);
@@ -138,17 +123,6 @@ export function ReportForm({ report, onSubmit, onCancel, isSubmitting }: ReportF
         {errors.description && (
           <p className="font-sans text-[12px] text-error">{errors.description.message}</p>
         )}
-      </div>
-
-      {/* Status (edit only) */}
-      <div className="flex flex-col gap-[6px]">
-        <label className="font-sans text-[14px] font-medium text-navy">Trạng thái</label>
-        <Select
-          value={statusValue}
-          onValueChange={(v) => setValue('status', v as 'draft' | 'published')}
-          options={STATUS_OPTIONS}
-          aria-label="Trạng thái báo cáo"
-        />
       </div>
 
       {/* Optional HTML file replacement */}
