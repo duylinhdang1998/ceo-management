@@ -78,9 +78,9 @@ export function EmployeeDashboard() {
       topbarTitle="Dashboard nhân viên"
     >
       {/* Welcome banner */}
-      <div className="mb-xl">
+      <div className="mb-md md:mb-xl">
         <h1
-          className="font-heading text-h1 text-navy mb-sm"
+          className="font-heading text-h2 md:text-h1 text-navy mb-sm"
           data-testid="dashboard-title"
         >
           Dashboard nhân viên

@@ -18,9 +18,11 @@ export interface SidebarProps {
   logo?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** Called when a nav item is clicked — used by mobile drawer to close itself */
+  onNavClick?: () => void;
 }
 
-export function Sidebar({ navItems, logo, footer, className }: SidebarProps) {
+export function Sidebar({ navItems, logo, footer, className, onNavClick }: SidebarProps) {
   return (
     <aside
       className={cn(
@@ -43,6 +45,7 @@ export function Sidebar({ navItems, logo, footer, className }: SidebarProps) {
               <NavLink
                 to={item.to}
                 end={item.end}
+                onClick={onNavClick}
                 className={({ isActive }) =>
                   cn(
                     'flex h-[48px] items-center gap-sm px-[16px] py-[8px]',

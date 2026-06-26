@@ -6,6 +6,10 @@ import { cn } from '@/shared/lib/cn';
 // Divider: 1px #F1F5F9
 // Hover background: #F8FAFC | Active: #0F172A06
 // Font: DM Sans 16px/400 label, 14px/400 #475569 description
+//
+// Responsive: the outer div uses overflow-x-auto so tables never blow out
+// the viewport on mobile. The inner <table> gets min-w-[600px] so columns
+// always have breathing room and the user can scroll horizontally.
 
 export interface TableColumn<T> {
   key: string;
@@ -13,6 +17,8 @@ export interface TableColumn<T> {
   cell: (row: T, index: number) => ReactNode;
   className?: string;
   headerClassName?: string;
+  /** Hide this column below the given breakpoint prefix, e.g. 'md' */
+  hideBelow?: 'sm' | 'md' | 'lg';
 }
 
 export interface TableProps<T> {
@@ -23,7 +29,15 @@ export interface TableProps<T> {
   emptyState?: ReactNode;
   className?: string;
   onRowClick?: (row: T) => void;
+  /** Min width for the inner table (default 600px) */
+  minWidth?: string;
 }
+
+const hideBelowClass: Record<NonNullable<TableColumn<unknown>['hideBelow']>, string> = {
+  sm: 'hidden sm:table-cell',
+  md: 'hidden md:table-cell',
+  lg: 'hidden lg:table-cell',
+};
 
 function Th({ className, children, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
@@ -65,14 +79,21 @@ export function Table<T>({
   emptyState,
   className,
   onRowClick,
+  minWidth = '600px',
 }: TableProps<T>) {
   return (
     <div className={cn('w-full overflow-x-auto rounded border border-nav-border bg-surface', className)}>
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse" style={{ minWidth }}>
         <thead className="bg-bg">
           <tr>
             {columns.map((col) => (
-              <Th key={col.key} className={col.headerClassName}>
+              <Th
+                key={col.key}
+                className={cn(
+                  col.headerClassName,
+                  col.hideBelow ? hideBelowClass[col.hideBelow] : undefined,
+                )}
+              >
                 {col.header}
               </Th>
             ))}
@@ -105,7 +126,13 @@ export function Table<T>({
                 )}
               >
                 {columns.map((col) => (
-                  <Td key={col.key} className={col.className}>
+                  <Td
+                    key={col.key}
+                    className={cn(
+                      col.className,
+                      col.hideBelow ? hideBelowClass[col.hideBelow] : undefined,
+                    )}
+                  >
                     {col.cell(row, index)}
                   </Td>
                 ))}

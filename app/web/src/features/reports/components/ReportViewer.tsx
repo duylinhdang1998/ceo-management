@@ -138,9 +138,9 @@ export function ReportViewer({
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <div className="flex h-full flex-col gap-md">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-md">
-          <div className="flex items-center gap-sm min-w-0">
+        {/* Header — stacks on mobile, side-by-side on md+ */}
+        <div className="flex flex-wrap items-start gap-sm">
+          <div className="flex items-center gap-sm min-w-0 flex-1">
             <Button
               variant="ghost"
               size="sm"
@@ -154,11 +154,11 @@ export function ReportViewer({
               {isLoading ? (
                 <div className="h-6 w-48 animate-pulse rounded bg-ghost-hover" />
               ) : isError ? (
-                <h1 className="font-heading text-h2 text-error">Lỗi tải báo cáo</h1>
+                <h1 className="font-heading text-[20px] md:text-h2 text-error">Lỗi tải báo cáo</h1>
               ) : (
                 <>
                   <div className="flex items-center gap-sm flex-wrap">
-                    <h1 className="font-heading text-h2 text-navy truncate">
+                    <h1 className="font-heading text-[20px] md:text-h2 text-navy truncate">
                       {report?.title}
                     </h1>
                     {report?.status && (
@@ -175,8 +175,8 @@ export function ReportViewer({
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-xs shrink-0">
+          {/* Action buttons — wrap gracefully on mobile */}
+          <div className="flex flex-wrap items-center gap-xs shrink-0">
             {/* Edit — only when canEdit */}
             {canEdit && report && (
               <Button
@@ -205,16 +205,16 @@ export function ReportViewer({
               </Button>
             )}
 
-            {/* Fullscreen toggle */}
+            {/* Fullscreen toggle — hidden on mobile (not meaningful on phone) */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleFullscreen}
-              className="flex items-center gap-xs"
+              className="hidden sm:flex items-center gap-xs"
               aria-label={isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
             >
               {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
-              {isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
+              <span className="hidden md:inline">{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
             </Button>
 
             {/* Notes drawer button */}

@@ -90,8 +90,8 @@ export default function ReportsPage() {
         sidebarFooter={sidebarFooter}
         topbarTitle={isAdmin ? 'Quản lý báo cáo' : 'Báo cáo của tôi'}
       >
-        <div className="mb-xl">
-          <h1 className="font-heading text-h1 text-navy mb-sm">
+        <div className="mb-md md:mb-xl">
+          <h1 className="font-heading text-h2 md:text-h1 text-navy mb-sm">
             {isAdmin ? 'Quản lý báo cáo' : 'Báo cáo của tôi'}
           </h1>
           <p className="font-sans text-body text-helper-text">

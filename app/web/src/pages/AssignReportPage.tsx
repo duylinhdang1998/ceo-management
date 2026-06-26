@@ -79,7 +79,7 @@ export default function AssignReportPage() {
           </div>
         ) : (
           <div>
-            <h1 className="font-heading text-h1 text-navy mb-xs">
+            <h1 className="font-heading text-h2 md:text-h1 text-navy mb-xs">
               {report?.title ?? 'Báo cáo'}
             </h1>
             <p className="font-sans text-[14px] text-helper-text">

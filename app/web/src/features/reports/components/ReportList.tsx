@@ -197,6 +197,7 @@ export function ReportList({ isAdmin, onEditReport, onCreateReport, onShowToast 
       header: 'Ngày tạo',
       headerClassName: 'w-[140px]',
       className: 'w-[140px]',
+      hideBelow: 'md',
       cell: (row) => (
         <span className="font-sans text-[14px] text-helper-text">
           {new Date(row.createdAt).toLocaleDateString('vi-VN')}
@@ -208,6 +209,7 @@ export function ReportList({ isAdmin, onEditReport, onCreateReport, onShowToast 
       header: 'Số NV được gán',
       headerClassName: 'w-[140px]',
       className: 'w-[140px]',
+      hideBelow: 'lg',
       cell: (row) => (
         <span className="font-sans text-[14px] text-helper-text">
           {row.assigneeCount ?? 0}
@@ -279,14 +281,14 @@ export function ReportList({ isAdmin, onEditReport, onCreateReport, onShowToast 
   return (
     <>
       {/* Toolbar */}
-      <div className="mb-md flex items-center justify-between gap-md flex-wrap">
-        <div className="flex items-center gap-sm flex-wrap">
+      <div className="mb-md flex flex-wrap items-center justify-between gap-sm">
+        <div className="flex flex-wrap items-center gap-sm w-full sm:w-auto">
           <Input
             placeholder="Tìm kiếm báo cáo..."
             leftIcon={<Search size={16} />}
             value={search}
             onChange={handleSearchChange}
-            className="max-w-[280px]"
+            className="w-full sm:max-w-[280px]"
             aria-label="Tìm kiếm báo cáo"
           />
           <DateRangePicker
@@ -296,7 +298,7 @@ export function ReportList({ isAdmin, onEditReport, onCreateReport, onShowToast 
           />
         </div>
         {isAdmin && (
-          <Button onClick={onCreateReport} data-testid="create-report-btn">
+          <Button onClick={onCreateReport} data-testid="create-report-btn" className="w-full sm:w-auto">
             + Tạo báo cáo mới
           </Button>
         )}

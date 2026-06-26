@@ -89,8 +89,8 @@ export default function UsersPage() {
         sidebarFooter={sidebarFooter}
         topbarTitle="Quản lý nhân viên"
       >
-        <div className="mb-xl">
-          <h1 className="font-heading text-h1 text-navy mb-sm">Quản lý nhân viên</h1>
+        <div className="mb-md md:mb-xl">
+          <h1 className="font-heading text-h2 md:text-h1 text-navy mb-sm">Quản lý nhân viên</h1>
           <p className="font-sans text-body text-helper-text">
             Tạo, sửa, khóa tài khoản nhân viên và cấp lại mật khẩu.
           </p>

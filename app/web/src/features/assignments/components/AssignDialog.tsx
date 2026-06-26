@@ -249,96 +249,98 @@ export function AssignDialog({
         />
       </div>
 
-      {/* Table */}
-      <div className="rounded border border-nav-border overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center gap-md bg-bg border-b border-nav-border px-md py-sm">
-          <Checkbox
-            checked={pageAllChecked}
-            indeterminate={pageIndeterminate}
-            onChange={(e) => handleSelectAll(e.target.checked)}
-            aria-label="Chọn tất cả trang này"
-          />
-          <span className="flex-1 font-sans text-[13px] font-medium text-navy">Tên nhân viên</span>
-          <span className="w-[180px] font-sans text-[13px] font-medium text-navy">Email</span>
-          <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Sửa</span>
-          <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Tải</span>
+      {/* Table — horizontal scroll on mobile so columns don't break viewport */}
+      <div className="rounded border border-nav-border overflow-x-auto">
+        <div className="min-w-[480px]">
+          {/* Header */}
+          <div className="flex items-center gap-md bg-bg border-b border-nav-border px-md py-sm">
+            <Checkbox
+              checked={pageAllChecked}
+              indeterminate={pageIndeterminate}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+              aria-label="Chọn tất cả trang này"
+            />
+            <span className="flex-1 font-sans text-[13px] font-medium text-navy">Tên nhân viên</span>
+            <span className="w-[160px] font-sans text-[13px] font-medium text-navy">Email</span>
+            <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Sửa</span>
+            <span className="w-[44px] text-center font-sans text-[13px] font-medium text-navy">Tải</span>
+          </div>
+
+          {/* Rows */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-xl">
+              <span className="inline-block h-6 w-6 animate-spin rounded-full border-[3px] border-navy border-t-transparent" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="py-xl text-center font-sans text-[14px] text-helper-text">
+              {search
+                ? `Không tìm thấy nhân viên nào với từ khóa "${search}"`
+                : 'Chưa có nhân viên nào.'}
+            </div>
+          ) : (
+            users.map((user) => {
+              const isSelected = permMap.has(user.id);
+              const perms = permMap.get(user.id);
+
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center gap-md px-md py-sm border-b border-nav-border last:border-b-0 hover:bg-ghost-hover transition-colors cursor-pointer"
+                  onClick={() => handleToggleRow(user.id, !isSelected)}
+                >
+                  {/* Row select */}
+                  <Checkbox
+                    checked={isSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleRow(user.id, e.target.checked);
+                    }}
+                    aria-label={`Chọn ${user.name}`}
+                  />
+
+                  <span className="flex-1 font-sans text-[14px] font-medium text-navy">
+                    {user.name}
+                  </span>
+                  <span className="w-[160px] font-sans text-[14px] text-helper-text truncate">
+                    {user.email}
+                  </span>
+
+                  {/* canEdit checkbox */}
+                  <div
+                    className="w-[44px] flex justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={perms?.canEdit ?? false}
+                      disabled={!isSelected}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleTogglePerm(user.id, 'canEdit', e.target.checked);
+                      }}
+                      aria-label={`Cho phép ${user.name} sửa`}
+                    />
+                  </div>
+
+                  {/* canDownload checkbox */}
+                  <div
+                    className="w-[44px] flex justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={perms?.canDownload ?? false}
+                      disabled={!isSelected}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleTogglePerm(user.id, 'canDownload', e.target.checked);
+                      }}
+                      aria-label={`Cho phép ${user.name} tải`}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-
-        {/* Rows */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-xl">
-            <span className="inline-block h-6 w-6 animate-spin rounded-full border-[3px] border-navy border-t-transparent" />
-          </div>
-        ) : users.length === 0 ? (
-          <div className="py-xl text-center font-sans text-[14px] text-helper-text">
-            {search
-              ? `Không tìm thấy nhân viên nào với từ khóa "${search}"`
-              : 'Chưa có nhân viên nào.'}
-          </div>
-        ) : (
-          users.map((user) => {
-            const isSelected = permMap.has(user.id);
-            const perms = permMap.get(user.id);
-
-            return (
-              <div
-                key={user.id}
-                className="flex items-center gap-md px-md py-sm border-b border-nav-border last:border-b-0 hover:bg-ghost-hover transition-colors cursor-pointer"
-                onClick={() => handleToggleRow(user.id, !isSelected)}
-              >
-                {/* Row select */}
-                <Checkbox
-                  checked={isSelected}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleToggleRow(user.id, e.target.checked);
-                  }}
-                  aria-label={`Chọn ${user.name}`}
-                />
-
-                <span className="flex-1 font-sans text-[14px] font-medium text-navy">
-                  {user.name}
-                </span>
-                <span className="w-[180px] font-sans text-[14px] text-helper-text truncate">
-                  {user.email}
-                </span>
-
-                {/* canEdit checkbox */}
-                <div
-                  className="w-[44px] flex justify-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={perms?.canEdit ?? false}
-                    disabled={!isSelected}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      handleTogglePerm(user.id, 'canEdit', e.target.checked);
-                    }}
-                    aria-label={`Cho phép ${user.name} sửa`}
-                  />
-                </div>
-
-                {/* canDownload checkbox */}
-                <div
-                  className="w-[44px] flex justify-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={perms?.canDownload ?? false}
-                    disabled={!isSelected}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      handleTogglePerm(user.id, 'canDownload', e.target.checked);
-                    }}
-                    aria-label={`Cho phép ${user.name} tải`}
-                  />
-                </div>
-              </div>
-            );
-          })
-        )}
       </div>
 
       {/* Pagination */}

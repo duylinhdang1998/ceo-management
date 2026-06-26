@@ -63,6 +63,7 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
     {
       key: 'email',
       header: 'Email',
+      hideBelow: 'md',
       cell: (user) => (
         <span className="font-sans text-[14px] text-helper-text">{user.email}</span>
       ),
@@ -70,6 +71,7 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
     {
       key: 'phone',
       header: 'Số điện thoại',
+      hideBelow: 'lg',
       cell: (user) => (
         <span className="font-sans text-[14px] text-helper-text">{user.phone ?? '—'}</span>
       ),
@@ -162,13 +164,13 @@ export function UserList({ onAdd, onEdit, onResetPassword }: UserListProps) {
   return (
     <div className="flex flex-col gap-md">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-md">
+      <div className="flex flex-wrap items-center justify-between gap-sm">
         <Input
           placeholder="Tìm theo tên hoặc email..."
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           leftIcon={<Search size={16} />}
-          className="max-w-[320px]"
+          className="w-full max-w-[320px]"
         />
         <Button variant="primary" onClick={onAdd}>
           <Plus size={16} />

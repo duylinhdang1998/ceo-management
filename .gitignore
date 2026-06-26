@@ -52,3 +52,4 @@ Thumbs.db
 
 # Subagent memory (runtime, machine-specific)
 .claude/agent-memory/
+**/output
