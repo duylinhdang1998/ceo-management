@@ -22,6 +22,11 @@ import { ReportForm } from './ReportForm';
 // a "Toàn màn hình" fullscreen button, a "Ghi chú" drawer button,
 // and (when permitted) "Sửa" / "Tải PDF" action buttons.
 
+// Feature flag: temporarily HIDE the "Tải PDF" download button while the
+// client-side PDF export is being reworked (it currently renders blank for
+// JS/chart reports). Set to true to re-enable — all the logic is kept intact.
+const ENABLE_PDF_DOWNLOAD = false;
+
 export interface ReportViewerProps {
   reportId: string;
   /** The logged-in user's id (passed down from the page) */
@@ -229,8 +234,8 @@ export function ReportViewer({
               </Button>
             )}
 
-            {/* Download — only when canDownload */}
-            {canDownload && (
+            {/* Download — temporarily hidden via ENABLE_PDF_DOWNLOAD flag */}
+            {ENABLE_PDF_DOWNLOAD && canDownload && (
               <Button
                 variant="secondary"
                 size="sm"
