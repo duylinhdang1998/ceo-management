@@ -44,22 +44,40 @@ export default function ReportsPage() {
   const updateReport = useUpdateReport();
 
   const handleCreate = (payload: CreateReportPayload) => {
+    // Close modal immediately so the upload runs in the background.
+    // Progress is shown by the fixed UploadProgressIndicator in the top-right.
+    if (payload.file) {
+      setIsUploadOpen(false);
+    }
     createReport.mutate(payload, {
       onSuccess: () => {
         showToast('Báo cáo đã được tạo thành công', 'success');
-        setIsUploadOpen(false);
+        // Close modal on success only for metadata-only creates (no file)
+        if (!payload.file) {
+          setIsUploadOpen(false);
+        }
       },
       onError: () => {
         showToast('Tạo báo cáo thất bại. Vui lòng thử lại.', 'error');
+        // Re-open modal on error so user can retry (only if no file — file error shown in indicator)
+        if (!payload.file) {
+          setIsUploadOpen(true);
+        }
       },
     });
   };
 
   const handleUpdate = (payload: UpdateReportPayload) => {
+    // Close modal immediately when uploading a new file — upload continues in background
+    if (payload.file) {
+      setEditingReport(null);
+    }
     updateReport.mutate(payload, {
       onSuccess: () => {
         showToast('Cập nhật thành công', 'success');
-        setEditingReport(null);
+        if (!payload.file) {
+          setEditingReport(null);
+        }
       },
       onError: () => {
         showToast('Cập nhật thất bại. Vui lòng thử lại.', 'error');

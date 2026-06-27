@@ -10,7 +10,8 @@ import type { ToastItem } from '@/shared/ui/Toast';
 import { NotePanel } from '@/features/notes';
 import { useNotes } from '@/features/notes';
 import { apiClient } from '@/shared/lib/api-client';
-import { useReport, useReportViewToken } from '../hooks/useReport';
+import html2pdf from 'html2pdf.js';
+import { useReport } from '../hooks/useReport';
 import { useUpdateReport } from '../hooks/useReportMutations';
 import type { UpdateReportPayload } from '../hooks/useReportMutations';
 import { ReportIframe } from './ReportIframe';
@@ -70,10 +71,17 @@ export function ReportViewer({
   const updateReport = useUpdateReport();
 
   const handleUpdate = (payload: UpdateReportPayload) => {
+    // Close modal immediately when uploading a new file — upload continues in background.
+    // Progress is shown by the fixed UploadProgressIndicator at top-right.
+    if (payload.file) {
+      setEditOpen(false);
+    }
     updateReport.mutate(payload, {
       onSuccess: () => {
         showToast('Báo cáo đã được cập nhật thành công', 'success');
-        setEditOpen(false);
+        if (!payload.file) {
+          setEditOpen(false);
+        }
       },
       onError: () => {
         showToast('Cập nhật báo cáo thất bại. Vui lòng thử lại.', 'error');
@@ -101,31 +109,61 @@ export function ReportViewer({
     }
   }, []);
 
-  // ── Download (print-to-PDF via view-token) ────────────────────────────────
-  // We need a fresh token on-demand so we use the hook's refetch rather than
-  // caching; in practice the cached token is fine for 3 min, then refetches.
-  const { refetch: fetchToken } = useReportViewToken(reportId);
+  // ── Download as a PDF file (client-side) ──────────────────────────────────
+  // Fetch the report HTML (JWT attached by api-client), render it off-screen in
+  // a same-origin iframe so its own CSS applies, then rasterise it to a PDF file
+  // with html2pdf and trigger a browser download. Note: report JavaScript does
+  // NOT run during capture, so JS-rendered charts may be incomplete.
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = useCallback(async () => {
+    setIsDownloading(true);
+    let iframe: HTMLIFrameElement | null = null;
     try {
-      const { data: token } = await fetchToken();
-      if (!token) return;
-      const base = apiClient.defaults.baseURL ?? '';
-      const url = `${base}/api/reports/${reportId}/content?token=${encodeURIComponent(token)}`;
-      const win = window.open(url, '_blank');
-      if (win) {
-        win.addEventListener('load', () => {
-          try {
-            win.print();
-          } catch {
-            // Cross-origin or popup blocker — user can still Ctrl+P → Save as PDF
-          }
-        });
-      }
+      const res = await apiClient.get<string>(`/api/reports/${reportId}/content`, {
+        responseType: 'text',
+      });
+      const html = res.data;
+
+      iframe = document.createElement('iframe');
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-10000px';
+      iframe.style.top = '0';
+      iframe.style.width = '794px'; // ≈ A4 width @96dpi
+      iframe.style.height = '1123px';
+      document.body.appendChild(iframe);
+
+      const idoc = iframe.contentDocument;
+      if (!idoc) throw new Error('iframe document unavailable');
+      idoc.open();
+      idoc.write(html);
+      idoc.close();
+
+      // Let the browser lay out and load images before capturing.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const safeName =
+        (report?.title ?? 'bao-cao').replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim() ||
+        'bao-cao';
+
+      await html2pdf()
+        .set({
+          margin: 8,
+          filename: `${safeName}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(idoc.body)
+        .save();
     } catch {
-      showToast('Không thể tải báo cáo. Vui lòng thử lại.', 'error');
+      showToast('Tạo PDF thất bại. Vui lòng thử lại.', 'error');
+    } finally {
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      setIsDownloading(false);
     }
-  }, [fetchToken, reportId, showToast]);
+  }, [reportId, report?.title, showToast]);
 
   const statusVariant = report?.status === 'published' ? 'success' : 'warning';
   const statusLabel = report?.status === 'published' ? 'Đã xuất bản' : 'Nháp';
@@ -197,6 +235,7 @@ export function ReportViewer({
                 variant="secondary"
                 size="sm"
                 onClick={() => void handleDownload()}
+                isLoading={isDownloading}
                 className="flex items-center gap-xs"
                 aria-label="Tải PDF"
               >

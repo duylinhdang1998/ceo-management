@@ -1189,6 +1189,120 @@ describe('Feature: Bulk soft-delete reports (POST /api/reports/bulk-delete)', ()
 });
 
 // ============================================================
+// Feature: PAT access to READ endpoints (Task 8.1 — JwtOrPatGuard)
+// ============================================================
+
+describe('Feature: PAT on GET /api/reports and GET /api/reports/:id', () => {
+
+  describe('Scenario: Valid PAT can list reports — GET /api/reports', () => {
+    it('should return 200 with reports list when Authorization uses valid PAT', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/reports')
+        .set('Authorization', `Bearer ${validPAT}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.meta).toBeDefined();
+    });
+  });
+
+  describe('Scenario: Valid PAT can get report detail — GET /api/reports/:id', () => {
+    it('should return 200 with report detail when Authorization uses valid PAT', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/reports/${testReportId}`)
+        .set('Authorization', `Bearer ${validPAT}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(testReportId);
+      expect(res.body.data.title).toBeDefined();
+    });
+  });
+
+  describe('Scenario: Invalid token on GET /api/reports — 401', () => {
+    it('should return 401 for a random invalid token', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/reports')
+        .set('Authorization', 'Bearer not-a-real-token-xyz-abc');
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Scenario: Revoked PAT on GET /api/reports — 401', () => {
+    it('should return 401 when PAT has been revoked', async () => {
+      // Create and immediately revoke a fresh PAT
+      const createRes = await request(app.getHttpServer())
+        .post('/api/auth/tokens')
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ name: 'revoke-read-test-pat' });
+      const revokedPAT: string = createRes.body.data?.token ?? createRes.body.data?.rawToken;
+      const revokedPATId: string = createRes.body.data?.id;
+
+      await request(app.getHttpServer())
+        .delete(`/api/auth/tokens/${revokedPATId}`)
+        .set('Authorization', `Bearer ${ceoToken}`);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/reports')
+        .set('Authorization', `Bearer ${revokedPAT}`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Scenario: Revoked PAT on GET /api/reports/:id — 401', () => {
+    it('should return 401 when PAT has been revoked for detail endpoint', async () => {
+      const createRes = await request(app.getHttpServer())
+        .post('/api/auth/tokens')
+        .set('Authorization', `Bearer ${ceoToken}`)
+        .send({ name: 'revoke-read-detail-test-pat' });
+      const revokedPAT: string = createRes.body.data?.token ?? createRes.body.data?.rawToken;
+      const revokedPATId: string = createRes.body.data?.id;
+
+      await request(app.getHttpServer())
+        .delete(`/api/auth/tokens/${revokedPATId}`)
+        .set('Authorization', `Bearer ${ceoToken}`);
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/reports/${testReportId}`)
+        .set('Authorization', `Bearer ${revokedPAT}`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Scenario: No token on GET /api/reports — 401', () => {
+    it('should return 401 when no Authorization header on list endpoint', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/reports');
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Scenario: No token on GET /api/reports/:id — 401', () => {
+    it('should return 401 when no Authorization header on detail endpoint', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/reports/${testReportId}`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Scenario: PAT sees all reports (super_admin scope)', () => {
+    it('should return meta.total >= 1 (PAT has super_admin scope, sees all)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/reports')
+        .set('Authorization', `Bearer ${validPAT}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.meta.total).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+});
+
+// ============================================================
 // Feature: Xem báo cáo qua iframe proxy (US-B4)
 // ============================================================
 

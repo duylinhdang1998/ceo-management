@@ -21,6 +21,7 @@ import { memoryStorage } from "multer";
 import { JwtGuard } from "../../common/auth/jwt.guard";
 import { RolesGuard } from "../../common/auth/roles.guard";
 import { JwtOrPatWriteGuard } from "../../common/auth/jwt-or-pat-write.guard";
+import { JwtOrPatGuard } from "../../common/auth/jwt-or-pat.guard";
 import { ReportUpdateGuard } from "../../common/auth/report-update.guard";
 import { ReportContentGuard } from "../../common/auth/report-content.guard";
 import { Roles } from "../../common/auth/roles.decorator";
@@ -116,10 +117,10 @@ export class ReportsController {
   }
 
   // --------------------------------------------------------------------------
-  // GET /api/reports — list (JWT, role-scoped in service)
+  // GET /api/reports — list (JWT any role OR PAT super_admin, role-scoped in service)
   // --------------------------------------------------------------------------
   @Get()
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtOrPatGuard)
   async findAll(
     @Query() pagination: PaginationDto,
     @CurrentUser() user: JwtPayload,
@@ -138,11 +139,11 @@ export class ReportsController {
   }
 
   // --------------------------------------------------------------------------
-  // GET /api/reports/:id — detail (JWT, role-scoped in service)
+  // GET /api/reports/:id — detail (JWT any role OR PAT super_admin, role-scoped in service)
   // NOTE: must be declared BEFORE :id/content so NestJS routing matches correctly
   // --------------------------------------------------------------------------
   @Get(":id")
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtOrPatGuard)
   async findOne(@Param("id") id: string, @CurrentUser() user: JwtPayload) {
     return this.reportsService.findOne(id, user.role, user.sub);
   }

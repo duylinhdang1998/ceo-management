@@ -3,6 +3,7 @@ import { ReportsController } from "./reports.controller";
 import { ReportsService } from "./reports.service";
 import { ReportsRepository } from "./reports.repository";
 import { JwtOrPatWriteGuard } from "../../common/auth/jwt-or-pat-write.guard";
+import { JwtOrPatGuard } from "../../common/auth/jwt-or-pat.guard";
 import { ReportUpdateGuard } from "../../common/auth/report-update.guard";
 import { ReportContentGuard } from "../../common/auth/report-content.guard";
 import { S3Module } from "../../infra/s3.module";
@@ -32,6 +33,7 @@ import { AssignmentsModule } from "../assignments/assignments.module";
     ReportsService,
     ReportsRepository,
     JwtOrPatWriteGuard,
+    JwtOrPatGuard,
     ReportUpdateGuard,
     ReportContentGuard,
   ],

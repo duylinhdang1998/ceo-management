@@ -3,21 +3,26 @@
  * report-upload.mjs — CEO Report Upload Skill helper script
  *
  * Usage:
- *   node report-upload.mjs --file <path> --report <name-or-url> [--dry-run]
+ *   node report-upload.mjs --api-url <url> --token <PAT> --file <path> --report <name-or-url>
+ *   node report-upload.mjs --file <path> --report <name-or-url>   # uses cached config
+ *   node report-upload.mjs --dry-run --file <path> --report <name>
  *   node report-upload.mjs --help
  *
- * Requirements: Node 20+ (uses built-in fetch, fs/promises, readline/promises)
- * No external npm dependencies.
+ * Auth: Personal Access Token (PAT) only — no email/password login.
+ *   Create a PAT on the portal's API Tokens page (Settings → API Tokens).
  *
- * Config stored at: ~/.config/ceo-report-skill/config.json  (chmod 600)
- * Config contains: { apiUrl, token }  — NO passwords stored.
+ * Config cached at: ~/.config/ceo-report-skill/config.json  (chmod 600)
+ * Config shape:     { apiUrl, token }
+ *
+ * Environment variable fallbacks: CEO_API_URL, CEO_API_TOKEN
+ *
+ * Requirements: Node 18+ (uses built-in fetch, FormData, Blob, fs/promises)
+ * No external npm dependencies.
  */
 
 import { readFile, writeFile, mkdir, access, chmod } from 'node:fs/promises';
-import { createInterface } from 'node:readline/promises';
 import { homedir } from 'node:os';
-import { join, resolve, extname } from 'node:path';
-import { stdin as input, stdout as output } from 'node:process';
+import { join, resolve, extname, basename } from 'node:path';
 import { resolveReport } from './lib/resolve-report.mjs';
 
 // ---------------------------------------------------------------------------
@@ -32,13 +37,22 @@ const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { file: null, report: null, dryRun: false, help: false };
+  const args = {
+    file: null,
+    report: null,
+    apiUrl: null,
+    token: null,
+    dryRun: false,
+    help: false,
+  };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') { args.help = true; }
     else if (arg === '--dry-run') { args.dryRun = true; }
     else if ((arg === '--file' || arg === '-f') && argv[i + 1]) { args.file = argv[++i]; }
     else if ((arg === '--report' || arg === '-r') && argv[i + 1]) { args.report = argv[++i]; }
+    else if (arg === '--api-url' && argv[i + 1]) { args.apiUrl = argv[++i]; }
+    else if (arg === '--token' && argv[i + 1]) { args.token = argv[++i]; }
   }
   return args;
 }
@@ -55,16 +69,23 @@ function printHelp() {
 ceo-report-upload — Upload hoặc sửa báo cáo HTML lên CEO Management Portal
 
 Usage:
-  node report-upload.mjs --file <path.html> --report <tên hoặc URL> [--dry-run]
-  node report-upload.mjs --help
+  # First run — provide API URL and PAT (saved to config for later runs):
+  node report-upload.mjs --api-url <url> --token <PAT> --file <path.html> --report <tên hoặc URL>
+
+  # Subsequent runs — use cached config:
+  node report-upload.mjs --file <path.html> --report <tên hoặc URL>
 
 Options:
-  --file, -f    <path>   Đường dẫn file HTML cần upload (bắt buộc)
-  --report, -r  <text>   Tên báo cáo hoặc URL dạng https://host/reports/<id>
-  --dry-run              Không gọi API thật, chỉ in ra các bước sẽ thực hiện
-  --help, -h             Hiển thị trợ giúp này
+  --api-url  <url>   API base URL (e.g. https://api.company.com). Also: CEO_API_URL env.
+  --token    <PAT>   Personal Access Token from the portal Tokens page. Also: CEO_API_TOKEN env.
+  --file, -f <path>  Đường dẫn file HTML cần upload (bắt buộc)
+  --report, -r <text> Tên báo cáo hoặc URL dạng https://host/reports/<id>
+  --dry-run          Không gọi API thật, chỉ in ra các bước sẽ thực hiện
+  --help, -h         Hiển thị trợ giúp này
 
-Config: ~/.config/ceo-report-skill/config.json  (chmod 600)
+Config: ~/.config/ceo-report-skill/config.json  (chmod 600, contains { apiUrl, token })
+
+Get a PAT: Log in to the CEO Management Portal → Settings → API Tokens → Create token.
 `);
 }
 
@@ -88,227 +109,43 @@ async function saveConfig(config) {
   await chmod(CONFIG_PATH, 0o600);
 }
 
-async function clearToken() {
-  const config = await loadConfig();
-  if (config) {
-    delete config.token;
-    await saveConfig(config);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Interactive prompts (readline/promises)
-// ---------------------------------------------------------------------------
-
-function makeReadline() {
-  return createInterface({ input, output, terminal: true });
-}
-
-async function prompt(rl, question) {
-  return (await rl.question(question)).trim();
-}
-
-async function promptPassword(rl, question) {
-  // Node readline doesn't have built-in hide; we write the question manually
-  process.stdout.write(question);
-  return new Promise((resolve) => {
-    let password = '';
-    const stdin = process.stdin;
-    const wasPaused = stdin.isPaused();
-    if (wasPaused) stdin.resume();
-    stdin.setRawMode(true);
-    stdin.setEncoding('utf8');
-
-    const handler = (ch) => {
-      if (ch === '\r' || ch === '\n') {
-        stdin.setRawMode(false);
-        stdin.removeListener('data', handler);
-        if (wasPaused) stdin.pause();
-        process.stdout.write('\n');
-        resolve(password);
-      } else if (ch === '') {
-        // Ctrl+C
-        process.exit(1);
-      } else if (ch === '' || ch === '\b') {
-        // Backspace
-        if (password.length > 0) {
-          password = password.slice(0, -1);
-          process.stdout.write('\b \b');
-        }
-      } else {
-        password += ch;
-        process.stdout.write('*');
-      }
-    };
-    stdin.on('data', handler);
-  });
-}
-
-// ---------------------------------------------------------------------------
-// First-run setup
-// ---------------------------------------------------------------------------
-
-/**
- * Run interactive first-run setup:
- *   1. Ask API base URL
- *   2. Ask CEO email + password
- *   3. POST /api/auth/login → get accessToken
- *   4. Save { apiUrl, token } to config (chmod 600)
- *
- * Returns the resulting config object.
- *
- * @param {object} opts
- * @param {boolean} opts.dryRun
- */
-async function runFirstTimeSetup(opts = {}) {
-  const { dryRun = false } = opts;
-
-  log('');
-  log('=== Thiết lập lần đầu (First-run Setup) ===');
-  log('Config sẽ được lưu tại: ' + CONFIG_PATH);
-  log('Mật khẩu KHÔNG được lưu lại.');
-  log('');
-
-  const rl = makeReadline();
-
-  let apiUrl;
-  while (true) {
-    apiUrl = await prompt(rl, 'Nhập API base URL của hệ thống (vd: https://api.company.com): ');
-    if (apiUrl && apiUrl.startsWith('http')) break;
-    log('URL không hợp lệ. Phải bắt đầu bằng http:// hoặc https://');
-  }
-  // Strip trailing slash
-  apiUrl = apiUrl.replace(/\/$/, '');
-
-  const email = await prompt(rl, 'Nhập email CEO: ');
-
-  let password;
-  try {
-    password = await promptPassword(rl, 'Nhập mật khẩu CEO: ');
-  } catch {
-    // Fallback for non-TTY (e.g. tests piping stdin)
-    password = await prompt(rl, 'Nhập mật khẩu CEO: ');
-  }
-
-  rl.close();
-
-  if (dryRun) {
-    log('[DRY-RUN] Sẽ gọi POST ' + apiUrl + '/api/auth/login với email: ' + email);
-    const fakeConfig = { apiUrl, token: 'dry-run-token' };
-    log('[DRY-RUN] Lưu config: ' + JSON.stringify(fakeConfig));
-    return fakeConfig;
-  }
-
-  // POST /api/auth/login
-  log('');
-  log('Đang đăng nhập...');
-
-  let loginRes;
-  try {
-    loginRes = await fetch(apiUrl + '/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-  } catch (e) {
-    err('Không thể kết nối tới API: ' + e.message);
-    err('Kiểm tra lại API URL và kết nối mạng.');
-    process.exit(1);
-  }
-
-  if (!loginRes.ok) {
-    if (loginRes.status === 401) {
-      err('Đăng nhập thất bại. Vui lòng kiểm tra email/mật khẩu.');
-    } else {
-      err('Đăng nhập thất bại. HTTP ' + loginRes.status);
-    }
-    process.exit(1);
-  }
-
-  let loginBody;
-  try {
-    loginBody = await loginRes.json();
-  } catch {
-    err('Phản hồi từ API không hợp lệ (không phải JSON).');
-    process.exit(1);
-  }
-
-  // Support both { accessToken } and { data: { accessToken } } shapes
-  const token = loginBody.accessToken || loginBody.data?.accessToken;
-  if (!token) {
-    err('Không tìm thấy accessToken trong phản hồi đăng nhập.');
-    process.exit(1);
-  }
-
-  const config = { apiUrl, token };
-  await saveConfig(config);
-  log('Đăng nhập thành công. Config đã lưu tại ' + CONFIG_PATH);
-  log('');
-
-  return config;
-}
-
 // ---------------------------------------------------------------------------
 // API helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Make an authenticated API request.
- * Returns { ok, status, body }
+ * Upload (POST or PUT) using multipart/form-data.
+ * Node 18+ has built-in FormData + Blob + fetch.
  */
-async function apiRequest(config, method, path, bodyObj, fetchFn = fetch) {
-  const url = config.apiUrl + path;
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: 'Bearer ' + config.token,
-  };
-  const options = { method, headers };
-  if (bodyObj !== undefined) {
-    options.body = JSON.stringify(bodyObj);
-  }
-
-  const res = await fetchFn(url, options);
-  let body;
-  try {
-    body = await res.json();
-  } catch {
-    body = null;
-  }
-  return { ok: res.ok, status: res.status, body };
-}
-
-// ---------------------------------------------------------------------------
-// Upload (PUT or POST)
-// ---------------------------------------------------------------------------
-
-async function handle401() {
-  await clearToken();
-  err('Phiên đăng nhập đã hết hạn hoặc token bị thu hồi. Chạy lại skill để đăng nhập mới.');
-  process.exit(1);
-}
-
-async function uploadReport(config, resolution, htmlContent, dryRun, fetchFn = fetch) {
+async function uploadReport(config, resolution, fileBuffer, filename, dryRun, fetchFn = fetch) {
   if (resolution.action === 'put') {
     const { reportId, reportTitle } = resolution;
     log("Cập nhật báo cáo '" + reportTitle + "' (id: " + reportId + ')...');
 
     if (dryRun) {
-      log('[DRY-RUN] Sẽ gọi PUT /api/reports/' + reportId + ' với htmlContent (' + htmlContent.length + ' bytes)');
+      log('[DRY-RUN] Sẽ gọi PUT /api/reports/' + reportId + ' (multipart, file=' + filename + ', ' + fileBuffer.length + ' bytes)');
       log("[DRY-RUN] Đã cập nhật báo cáo '" + reportTitle + "' thành công.");
       return;
     }
 
-    const { ok, status, body } = await apiRequest(
-      config,
-      'PUT',
-      '/api/reports/' + reportId,
-      { htmlContent },
-      fetchFn,
-    );
+    const form = new FormData();
+    form.append('file', new Blob([fileBuffer], { type: 'text/html' }), filename);
 
-    if (status === 401) await handle401();
-    if (!ok) {
-      err('Cập nhật thất bại. HTTP ' + status + ': ' + JSON.stringify(body));
+    const res = await fetchFn(config.apiUrl + '/api/reports/' + reportId, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + config.token },
+      body: form,
+    });
+
+    let body;
+    try { body = await res.json(); } catch { body = null; }
+
+    if (res.status === 401) {
+      err('Token không hợp lệ hoặc đã bị thu hồi. Kiểm tra lại PAT hoặc truyền --token <PAT> mới.');
+      process.exit(1);
+    }
+    if (!res.ok) {
+      err('Cập nhật thất bại. HTTP ' + res.status + ': ' + JSON.stringify(body));
       process.exit(1);
     }
     log("Đã cập nhật báo cáo '" + reportTitle + "' thành công.");
@@ -318,22 +155,30 @@ async function uploadReport(config, resolution, htmlContent, dryRun, fetchFn = f
     log("Tạo báo cáo mới '" + title + "'...");
 
     if (dryRun) {
-      log('[DRY-RUN] Sẽ gọi POST /api/reports với title="' + title + '" và htmlContent (' + htmlContent.length + ' bytes)');
+      log('[DRY-RUN] Sẽ gọi POST /api/reports (multipart, title="' + title + '", file=' + filename + ', ' + fileBuffer.length + ' bytes)');
       log("[DRY-RUN] Đã tạo báo cáo mới '" + title + "' thành công. ID: dry-run-id");
       return;
     }
 
-    const { ok, status, body } = await apiRequest(
-      config,
-      'POST',
-      '/api/reports',
-      { title, htmlContent, status: 'draft' },
-      fetchFn,
-    );
+    const form = new FormData();
+    form.append('title', title);
+    form.append('file', new Blob([fileBuffer], { type: 'text/html' }), filename);
 
-    if (status === 401) await handle401();
-    if (!ok) {
-      err('Tạo báo cáo thất bại. HTTP ' + status + ': ' + JSON.stringify(body));
+    const res = await fetchFn(config.apiUrl + '/api/reports', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + config.token },
+      body: form,
+    });
+
+    let body;
+    try { body = await res.json(); } catch { body = null; }
+
+    if (res.status === 401) {
+      err('Token không hợp lệ hoặc đã bị thu hồi. Kiểm tra lại PAT hoặc truyền --token <PAT> mới.');
+      process.exit(1);
+    }
+    if (!res.ok) {
+      err('Tạo báo cáo thất bại. HTTP ' + res.status + ': ' + JSON.stringify(body));
       process.exit(1);
     }
 
@@ -381,52 +226,77 @@ async function main() {
     process.exit(1);
   }
 
-  // Read HTML content
-  const htmlContent = await readFile(filePath, 'utf8');
-  if (!htmlContent.trim()) {
+  // Read file as buffer (multipart upload)
+  const fileBuffer = await readFile(filePath);
+  if (fileBuffer.length === 0) {
     err('File HTML rỗng: ' + filePath);
     process.exit(1);
   }
+  const filename = basename(filePath);
 
-  // Load or setup config
-  let config = await loadConfig();
+  // ---------------------------------------------------------------------------
+  // Resolve config: CLI flags > env vars > cached config
+  // ---------------------------------------------------------------------------
+  const cliApiUrl = args.apiUrl || process.env.CEO_API_URL || null;
+  const cliToken  = args.token  || process.env.CEO_API_TOKEN || null;
 
-  if (!config || !config.apiUrl || !config.token) {
-    config = await runFirstTimeSetup({ dryRun: args.dryRun });
+  let config = null;
+
+  if (cliApiUrl && cliToken) {
+    // Save and use the provided credentials
+    const stripped = cliApiUrl.replace(/\/$/, '');
+    config = { apiUrl: stripped, token: cliToken };
+    await saveConfig(config);
+    log('Config đã lưu tại ' + CONFIG_PATH);
   } else {
+    config = await loadConfig();
+    if (!config || !config.apiUrl || !config.token) {
+      err(
+        'Chưa có config. Truyền --api-url <url> --token <PAT> để thiết lập.\n' +
+        'PAT được tạo tại: CEO Management Portal → Settings → API Tokens.\n' +
+        'Ví dụ:\n' +
+        '  node report-upload.mjs --api-url https://api.company.com --token <PAT> \\\n' +
+        '    --file report.html --report "Tên báo cáo"'
+      );
+      process.exit(1);
+    }
     log('Dùng config đã lưu từ ' + CONFIG_PATH);
   }
 
-  // Resolve report — supply readline-backed promptFn for interactive branches
+  // Resolve report — no interactive prompts; promptFn not required for URL path,
+  // but name-search "0 results" branch needs it. We supply a non-interactive stub
+  // that declines (returns 'N') — the agent calling this script should pass a URL
+  // or an exact match. For multi-match disambiguation the agent handles that outside.
   const resolution = await resolveReport(args.report, config, {
     dryRun: args.dryRun,
     fetchFn: fetch,
     logFn: log,
     promptFn: async (question) => {
-      const rl = makeReadline();
-      const answer = await prompt(rl, question);
-      rl.close();
-      return answer;
+      // Non-interactive: print the question to stderr so the caller (Claude agent)
+      // can see it, then return 'N' to cancel rather than hanging on stdin.
+      process.stderr.write('[PROMPT] ' + question + '\n');
+      process.stderr.write('[INFO] Non-interactive mode: answering N. Pass a URL or exact name to avoid ambiguity.\n');
+      return 'N';
     },
   });
 
   if (resolution.action === 'cancel') {
-    log('Đã hủy. Không có thay đổi nào được thực hiện.');
+    log('Không tìm thấy báo cáo khớp. Không có thay đổi nào được thực hiện.');
+    log('Gợi ý: Truyền URL dạng https://host/reports/<id> để tạo/cập nhật chính xác.');
     process.exit(0);
   }
 
   if (resolution.action === 'error') {
     if (resolution.message === '401') {
-      await clearToken();
-      err('Phiên đăng nhập đã hết hạn hoặc token bị thu hồi. Chạy lại skill để đăng nhập mới.');
+      err('Token không hợp lệ hoặc đã bị thu hồi. Truyền --token <PAT> mới để cập nhật config.');
     } else {
       err(resolution.message);
     }
     process.exit(1);
   }
 
-  // Upload
-  await uploadReport(config, resolution, htmlContent, args.dryRun, fetch);
+  // Upload via multipart
+  await uploadReport(config, resolution, fileBuffer, filename, args.dryRun, fetch);
 }
 
 main().catch((e) => {
